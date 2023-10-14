@@ -25,28 +25,29 @@ def image_processor(task_queue: mp.Queue, sendingMessage_queue: mp.Queue):
             #mode
             prompt = Prompt(json_modes.test)
             execute_outputs = ['9']
-            extra_data = json_modes.upscale_extra_data #maybe don't need
+            extra_data = json_modes.test_extra_data #maybe don't need
             prompt_id = '31de2ae1-c8c3-4dd0-85ff-d5fe017f9602' #change later
 
             #Lora
-            # LoraList = config_data.get('lora', None)
-            # if LoraList != None:
-            #     prompt = add_Lora(prompt, LoraList)
-            #     LoraNum = len(LoraList)
-            #     prompt = json_modes.test
-            #     prompt["6"]["inputs"]["clip"] = [str(22+LoraNum-1), 1]
-            #     prompt["3"]["inputs"]["model"] = [str(22+LoraNum-1), 0]
+            LoraList = config_data.get('lora', None)
+            if LoraList is not None and LoraList != []:
+                prompt.add_lora(LoraList)
+                prompt.link_lora(LoraList)
+                
 
             #Configs - KSampler
             new_seed = random.randint(0, 2**32)
             prompt.update_attribute("KSampler", "seed", new_seed)
-
             prompt.update_attribute("KSampler", "cfg", float(config_data.get('cfg', '10')))
             prompt.update_attribute("KSampler", "denoise", float(config_data.get('intensity', '60')) * 0.01)
 
-            if config_data.get('model', '') is not None:
+            #Configs - models
+            if config_data.get('model', '') is None:
+                prompt.update_attribute("CheckpointLoaderSimple", "ckpt_name", 'etherBluMix_etherBluMix5.safetensors')
+            else:
                 prompt.update_attribute("CheckpointLoaderSimple", "ckpt_name", config_data.get('model', 'etherBluMix_etherBluMix5.safetensors'))
 
+            #Configs - prompt
             prompt.update_attribute("CLIPTextEncode", "text", "masterpiece, best quality," + config_data.get('prompt', ''))
             prompt.update_attribute("CLIPTextEncode_1", "text", "easynegative" + config_data.get('negPrompt', 'easynegative'))
 

@@ -1,27 +1,26 @@
 #----------------------------------------------Initialization---------------------------------------------------------
 import multiprocessing as mp
-
 import asyncio
 import json
 import os
 import main
-main.execute_prestartup_script()
-from comfy.cli_args import args
-if os.name == "nt":
-    import logging
-    logging.getLogger("xformers").addFilter(lambda record: 'A matching Triton is not available' not in record.getMessage())
-
-if __name__ == "__main__":
-    if args.cuda_device is not None:
-        os.environ['CUDA_VISIBLE_DEVICES'] = str(args.cuda_device)
-        print("Set cuda device to:", args.cuda_device)
-
-    import cuda_malloc
 from websockets.server import serve
 from task_processor import image_processor
 from main import cleanup_temp
+import cuda_malloc
+from comfy.cli_args import args
 
-image = None
+def init():
+    main.execute_prestartup_script()
+    if os.name == "nt":
+        import logging
+        logging.getLogger("xformers").addFilter(lambda record: 'A matching Triton is not available' not in record.getMessage())
+
+    if __name__ == "__main__":
+        if args.cuda_device is not None:
+            os.environ['CUDA_VISIBLE_DEVICES'] = str(args.cuda_device)
+            print("Set cuda device to:", args.cuda_device)
+    image = None
 
 class Server:
     def __init__(self):
@@ -30,12 +29,13 @@ class Server:
         self.task_queue = mp.Queue()
         self.sendingMessage_queue = mp.Queue()
         self.positionInqueue = []
-
         self.processor = mp.Process(target=image_processor, args=(self.task_queue, self.sendingMessage_queue))
 
     async def handle_client(self, websocket, path):
         byteBuffer = b""
         config_data = None 
+        interrupt_processing = False
+        interrupt_processing_mutex = mp.Lock()
         try:
             async for message in websocket:
                 current_client_id = getattr(websocket, 'client_id', None)
@@ -69,6 +69,12 @@ class Server:
                     setattr(websocket, 'com_id', message[10:20])
                     self.task_queue.put((byteBuffer, config_data, current_client_id))
                     byteBuffer = b"" # clean buffer
+                #cancel
+                if message == "cancel":
+                    with interrupt_processing_mutex:
+                        interrupt_processing = True
+                    print(f"Client {websocket} requested an interrupt.")
+                    continue
         except Exception as e:
             print(f"Error in websocket communication: {e}")
 
@@ -115,14 +121,14 @@ class Server:
         main.cleanup_temp()
     
         self.processor.start()
-        start_server = serve(self.handle_client, "143.215.110.23", 8765)
+        start_server = serve(self.handle_client, "143.215.106.165", 8765)
         print("server open")
         asyncio.get_event_loop().run_until_complete(start_server)
         asyncio.get_event_loop().create_task(self.process_results())
         asyncio.get_event_loop().run_forever()
 
 if __name__ == '__main__':
+    init()
     cleanup_temp()
-
     server = Server()
     server.start()

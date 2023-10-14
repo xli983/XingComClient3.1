@@ -8,6 +8,8 @@ from tqdm.auto import trange, tqdm
 
 from . import utils
 
+import model_management
+
 
 def append_zero(x):
     return torch.cat([x, x.new_zeros([1])])
@@ -577,6 +579,7 @@ def sample_dpmpp_2m(model, x, sigmas, extra_args=None, callback=None, disable=No
     old_denoised = None
 
     for i in trange(len(sigmas) - 1, disable=disable):
+        model_management.throw_exception_if_processing_interrupted()
         denoised = model(x, sigmas[i] * s_in, **extra_args)
         if callback is not None:
             callback({'x': x, 'i': i, 'sigma': sigmas[i], 'sigma_hat': sigmas[i], 'denoised': denoised})

@@ -42,14 +42,12 @@ def image_to_png_bytestring(image):
     png_bytestring.seek(0)
     return png_bytestring.getvalue()
 
-def add_Lora(prompt, input_lora):
+def add_lora(self, input_lora):
     base_model_clip = 4  # Starting model and clip value
     current_id = 22  # Starting ID
-
     for lora_entry in input_lora:
         lora_name = lora_entry['name']
         intensity = lora_entry['intensity']
-
         lora_item = {
             "inputs": {
                 "lora_name": f"{lora_name}.safetensors",
@@ -60,12 +58,11 @@ def add_Lora(prompt, input_lora):
             },
             "class_type": "LoraLoader"
         }
-
-        prompt[str(current_id)] = lora_item
-
+        self.data[str(current_id)] = lora_item  # Use self.data for item assignment
         # Update values for the next iteration
         base_model_clip = current_id
         current_id += 1
+
 
 class Task:
     def __init__(self, byteBuffer, config_data,client_id):

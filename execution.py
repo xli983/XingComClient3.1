@@ -121,6 +121,7 @@ def format_value(x):
 
 
 def recursive_execute(prompt, outputs, current_item, extra_data, executed, prompt_id, outputs_ui, object_storage):
+    comfy.model_management.throw_exception_if_processing_interrupted()
     result = None
     unique_id = current_item
     inputs = prompt[unique_id]['inputs']
