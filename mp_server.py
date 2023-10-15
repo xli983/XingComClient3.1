@@ -5,7 +5,7 @@ import json
 import os
 import main
 from websockets.server import serve
-from task_processor import image_processor
+from task_processor import image_processor, CrossProcess
 from main import cleanup_temp
 import cuda_malloc
 from comfy.cli_args import args
@@ -29,15 +29,19 @@ class Server:
         self.task_queue = mp.Queue()
         self.sendingMessage_queue = mp.Queue()
         self.positionInqueue = []
-        self.processor = mp.Process(target=image_processor, args=(self.task_queue, self.sendingMessage_queue))
+        #interrupt
+        self.manager = mp.Manager()
+        state=self.manager.Value("i",0)
+        CrossProcess.interrupt=state
+        state.value=0
+        self.currentProgressObject = self.manager.dict()
+        self.processor = mp.Process(target=image_processor, args=(self.task_queue, self.sendingMessage_queue,state))
 
     async def handle_client(self, websocket, path):
         byteBuffer = b""
         config_data = None 
-        interrupt_processing = False
-        interrupt_processing_mutex = mp.Lock()
         try:
-            async for message in websocket:
+            async for message in websocket: #save client id and task id
                 current_client_id = getattr(websocket, 'client_id', None)
                 if current_client_id is None:
                     current_client_id = id(websocket)
@@ -70,9 +74,8 @@ class Server:
                     self.task_queue.put((byteBuffer, config_data, current_client_id))
                     byteBuffer = b"" # clean buffer
                 #cancel
-                if message == "cancel":
-                    with interrupt_processing_mutex:
-                        interrupt_processing = True
+                if message[0:6] == b"cancel":
+                    CrossProcess.interrupt.value=1
                     print(f"Client {websocket} requested an interrupt.")
                     continue
         except Exception as e:
@@ -107,8 +110,8 @@ class Server:
                         await asyncio.sleep(0.01)
                     # if Messagetype == "position":
                     #     await websocket.send(f"position: {content}")
-                    # if Messagetype == "message":
-                    #     await websocket.send(f"update: {content}")
+                    if Messagetype == "message":
+                        await websocket.send({content})
                     # if Messagetype == "progress":
                     #     await websocket.send(f"progress:{content}")
                     if Messagetype == "id":
@@ -121,7 +124,7 @@ class Server:
         main.cleanup_temp()
     
         self.processor.start()
-        start_server = serve(self.handle_client, "143.215.106.165", 8765)
+        start_server = serve(self.handle_client, "143.215.100.73", 8765)
         print("server open")
         asyncio.get_event_loop().run_until_complete(start_server)
         asyncio.get_event_loop().create_task(self.process_results())

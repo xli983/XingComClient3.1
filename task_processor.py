@@ -1,10 +1,15 @@
 from init import *
-from nodes import init_custom_nodes
 from prompt_class import Prompt
 
-def image_processor(task_queue: mp.Queue, sendingMessage_queue: mp.Queue):
+class CrossProcess:
+    interrupt=None
+
+def image_processor(task_queue: mp.Queue, sendingMessage_queue: mp.Queue,state):
+    from nodes import init_custom_nodes
     init_custom_nodes()
     e = execution.PromptExecutor()
+    from Interrupt import ProgressTracker
+    ProgressTracker.interrupter=state
     while True:
         if task_queue.empty():
             continue
@@ -15,6 +20,7 @@ def image_processor(task_queue: mp.Queue, sendingMessage_queue: mp.Queue):
         sendingMessage_queue.put(("Start Processing your Image", client_id, "message"))
 
         try:
+            ProgressTracker.interrupter.value=0
             #image
             received = image_data
             init_img: Image.Image
@@ -53,6 +59,9 @@ def image_processor(task_queue: mp.Queue, sendingMessage_queue: mp.Queue):
 
             print(prompt.data)
             image = e.execute(prompt.data, prompt_id, extra_data, execute_outputs)
+            if image == "Interrupted":
+                sendingMessage_queue.put(("Canceled", client_id, "message"))
+                continue
             
             image = image.convert('RGBA')
             result = image_to_png_bytestring(image.resize((shape[0], shape[1]), Image.LANCZOS))
@@ -60,3 +69,4 @@ def image_processor(task_queue: mp.Queue, sendingMessage_queue: mp.Queue):
 
         except Exception as e:
             print(f"Error: {e}")
+            e = execution.PromptExecutor()

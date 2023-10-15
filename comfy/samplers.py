@@ -8,6 +8,8 @@ from .ldm.modules.diffusionmodules.util import make_ddim_timesteps
 import math
 from comfy import model_base
 
+from Interrupt import ProgressTracker
+
 def lcm(a, b): #TODO: eventually replace by math.lcm (added in python3.9)
     return abs(a*b) // math.gcd(a, b)
 
@@ -262,7 +264,8 @@ def sampling_function(model_function, x, timestep, uncond, cond, cond_scale, con
                     output = model_function(input_x, timestep_, **c).chunk(batch_chunks)
                 del input_x
 
-                model_management.throw_exception_if_processing_interrupted()
+                if ProgressTracker.interrupter.value!=0:
+                    raise model_management.InterruptProcessingException()
 
                 for o in range(batch_chunks):
                     if cond_or_uncond[o] == COND:

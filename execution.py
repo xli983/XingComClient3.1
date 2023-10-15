@@ -11,6 +11,7 @@ import torch
 import nodes
 
 import comfy.model_management
+from Interrupt import ProgressTracker
 
 from nodes import load_custom_nodes
 
@@ -121,6 +122,8 @@ def format_value(x):
 
 
 def recursive_execute(prompt, outputs, current_item, extra_data, executed, prompt_id, outputs_ui, object_storage):
+    if ProgressTracker.interrupter.value!=0:
+        raise comfy.model_management.InterruptProcessingException()
     comfy.model_management.throw_exception_if_processing_interrupted()
     result = None
     unique_id = current_item
@@ -164,7 +167,7 @@ def recursive_execute(prompt, outputs, current_item, extra_data, executed, promp
             "node_id": unique_id,
         }
 
-        return (False, error_details, iex)
+        return (False, error_details, iex, "Interrupted")
     except Exception as ex:
         typ, _, tb = sys.exc_info()
         exception_type = full_type_name(typ)
@@ -381,6 +384,7 @@ class PromptExecutor:
                 success, error, ex, result = recursive_execute(prompt, self.outputs, output_node_id, extra_data, executed, prompt_id, self.outputs_ui, self.object_storage)
                 if success is not True:
                     self.handle_execution_error(prompt_id, prompt, current_outputs, executed, error, ex)
+                    return result
                     break
                 if result is not None:
                     return result
