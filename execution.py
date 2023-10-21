@@ -219,11 +219,12 @@ def recursive_output_delete_if_changed(prompt, old_prompt, outputs, current_item
     unique_id = current_item
     inputs = prompt[unique_id]['inputs']
     class_type = prompt[unique_id]['class_type']
-    try:
-        class_def = nodes.NODE_CLASS_MAPPINGS[class_type]
-    except KeyError:
-         load_custom_nodes()
-         class_def = nodes.NODE_CLASS_MAPPINGS[class_type]
+    #    try:
+    #     class_def = nodes.NODE_CLASS_MAPPINGS[class_type]
+    # except KeyError:
+    #      load_custom_nodes()
+    #      class_def = nodes.NODE_CLASS_MAPPINGS[class_type]
+    class_def = nodes.NODE_CLASS_MAPPINGS[class_type]
 
     is_changed_old = ''
     is_changed = ''
@@ -364,6 +365,7 @@ class PromptExecutor:
                     d = self.outputs_ui.pop(x)
                     del d
 
+            comfy.model_management.cleanup_models()
             # if self.server.client_id is not None:
             #     self.server.send_sync("execution_cached", { "nodes": list(current_outputs) , "prompt_id": prompt_id}, self.server.client_id)
             executed = set()

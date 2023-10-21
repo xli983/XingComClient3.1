@@ -124,7 +124,7 @@ class Server:
         main.cleanup_temp()
     
         self.processor.start()
-        start_server = serve(self.handle_client, "143.215.100.73", 8765)
+        start_server = serve(self.handle_client, "143.215.102.11", 8765)
         print("server open")
         asyncio.get_event_loop().run_until_complete(start_server)
         asyncio.get_event_loop().create_task(self.process_results())
