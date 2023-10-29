@@ -17,7 +17,7 @@ def image_processor(task_queue: mp.Queue, sendingMessage_queue: mp.Queue,state):
         task_tuple = task_queue.get()
 
         image_data, config_data, client_id= task_tuple
-        sendingMessage_queue.put(("Start Processing your Image", client_id, "message"))
+        #sendingMessage_queue.put(("Start Processing your Image", client_id, "message"))
 
         try:
             ProgressTracker.interrupter.value=0
@@ -69,4 +69,4 @@ def image_processor(task_queue: mp.Queue, sendingMessage_queue: mp.Queue,state):
 
         except Exception as e:
             print(f"Error: {e}")
-            e = execution.PromptExecutor()
+            raise e
