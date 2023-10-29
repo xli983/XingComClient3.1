@@ -51,7 +51,7 @@ class Client:
                     config_json = message[20:].decode()
                     self.config_data = json.loads(config_json)
                     print(f"Config Data: {self.config_data}")
-                    await websocket.send(message[10:20] + b"successReceiveConfig")
+                    #await websocket.send(message[10:20] + b"successReceiveConfig")
                 # Image block
                 elif message[0:5] == b"block":
                     print(message)
@@ -65,6 +65,7 @@ class Client:
                     self.byteBuffer = b""  # Clean buffer
         except Exception as e:
             print(f"Error in websocket communication: {e}")
+            raise e
 
     async def process_results(self, websocket):
         while True:
@@ -87,6 +88,7 @@ class Client:
                         await websocket.send(b"0000000000" + content)
                 except Exception as e:
                     print(f"Error in sending message to websocket: {e}")
+                    raise e
 
     async def start(self):
         main.cleanup_temp()
@@ -96,7 +98,17 @@ class Client:
             send_task = asyncio.create_task(self.process_results(websocket))
             await asyncio.gather(receive_task, send_task)
 
-if __name__ == '__main__':
+def main_program():
     cleanup_temp()
     client = Client()
     asyncio.get_event_loop().run_until_complete(client.start())
+
+if __name__ == '__main__':
+    while True:
+        try:
+            main_program()
+        except Exception as e:
+            print(f"Error encountered: {e}. Restarting the program...")
+            continue
+
+
