@@ -29,8 +29,9 @@ def image_processor(task_queue: mp.Queue, sendingMessage_queue: mp.Queue,state):
             image_handler.set_image_value(init_img)
 
             #mode
+            mode = "upscale"
             prompt = Prompt(json_modes.test)
-            execute_outputs = ['9']
+            execute_outputs = json_modes.test_execute_outputs
             extra_data = json_modes.test_extra_data #maybe don't need
             prompt_id = '31de2ae1-c8c3-4dd0-85ff-d5fe017f9602' #change later
 
@@ -43,9 +44,14 @@ def image_processor(task_queue: mp.Queue, sendingMessage_queue: mp.Queue,state):
 
             #Configs - KSampler
             new_seed = random.randint(0, 2**32)
-            prompt.update_attribute("KSampler", "seed", new_seed)
-            prompt.update_attribute("KSampler", "cfg", float(config_data.get('cfg', '10')))
-            prompt.update_attribute("KSampler", "denoise", float(config_data.get('intensity', '60')) * 0.01)
+            if mode == "upscale":
+                prompt.update_attribute("BNK_TiledKSampler", "seed", new_seed)
+                prompt.update_attribute("BNK_TiledKSampler", "cfg", float(config_data.get('cfg', '10')))
+                prompt.update_attribute("BNK_TiledKSampler", "denoise", float(config_data.get('intensity', '60')) * 0.01)
+            else:
+                prompt.update_attribute("KSampler", "seed", new_seed)
+                prompt.update_attribute("KSampler", "cfg", float(config_data.get('cfg', '10')))
+                prompt.update_attribute("KSampler", "denoise", float(config_data.get('intensity', '60')) * 0.01)                
 
             #Configs - models
             if config_data.get('model', '') is None:
@@ -58,7 +64,9 @@ def image_processor(task_queue: mp.Queue, sendingMessage_queue: mp.Queue,state):
             prompt.update_attribute("CLIPTextEncode_1", "text", "easynegative" + config_data.get('negPrompt', 'easynegative'))
 
             print(prompt.data)
-            image = e.execute(prompt.data, prompt_id, extra_data, execute_outputs)
+            image = e.execute(prompt.data, prompt_id, extra_data, execute_outputs)\
+            
+            print("prompt in queue")
             if image == "Interrupted":
                 sendingMessage_queue.put(("Canceled", client_id, "message"))
                 continue
@@ -70,3 +78,4 @@ def image_processor(task_queue: mp.Queue, sendingMessage_queue: mp.Queue,state):
         except Exception as e:
             print(f"Error: {e}")
             raise e
+
