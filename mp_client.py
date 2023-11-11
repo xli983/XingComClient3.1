@@ -33,6 +33,12 @@ class Client:
         self.task_id = None
         self.sendingMessage_queue = mp.Queue()
         self.positionInqueue = []
+        self.functions = {
+            'config': self.config,
+            'block': self.block,
+            'i2i': self.i2i,
+            'cancel': self.cancel
+        }
         self.byteBuffer = b""
         self.config_data = None 
         #interrupt
@@ -43,26 +49,52 @@ class Client:
         self.currentProgressObject = self.manager.dict()
         self.processor = mp.Process(target=image_processor, args=(self.task_queue, self.sendingMessage_queue,state))
 
+    async def config(self):
+        config_json = self.message[20:].decode()
+        self.config_data = json.loads(config_json)
+        print(f"Config Data: {self.config_data}")
+    
+    async def block(self):
+        self.byteBuffer += self.message[20:]
+
+    async def i2i(self):
+        print(f"Received final image block, length: {len(self.message)}")
+        self.task_id = self.message[10:20]
+        self.byteBuffer += self.message[20:]
+        self.task_queue.put((self.byteBuffer, self.config_data, self.task_id))
+        self.byteBuffer = b""  # Clean buffer
+
+    async def cancel(self):
+        CrossProcess.interrupt.value=1
+        print(f"Client {self.websocket} requested an interrupt.")
+        
+
     async def receive_from_server(self, websocket):
         try:
             async for message in websocket:
+                self.message = message
+                header = message[:10].decode('utf-8').rstrip('\x00')
+                self.task_id = message[10:20]
+                print("received " + str(header)+str(self.task_id)) 
+                func = self.functions.get(header)
+                if func:
+                    await func()
                 # Config
-                if message[0:6] == b"config":
-                    config_json = message[20:].decode()
-                    self.config_data = json.loads(config_json)
-                    print(f"Config Data: {self.config_data}")
-                    #await websocket.send(message[10:20] + b"successReceiveConfig")
+                # if message[0:6] == b"config":
+                #     config_json = message[20:].decode()
+                #     self.config_data = json.loads(config_json)
+                #     print(f"Config Data: {self.config_data}")
                 # Image block
-                elif message[0:5] == b"block":
-                    print(message)
-                    self.byteBuffer += message[20:]
+                # elif message[0:5] == b"block":
+                #     print(message)
+                #     self.byteBuffer += message[20:]
                 # Last image block
-                elif message[0:3] == b"i2i":
-                    print(f"Received final image block, length: {len(message)}")
-                    self.task_id = message[10:20]
-                    self.byteBuffer += message[20:]
-                    self.task_queue.put((self.byteBuffer, self.config_data, self.task_id))
-                    self.byteBuffer = b""  # Clean buffer
+                # elif message[0:3] == b"i2i":
+                #     print(f"Received final image block, length: {len(message)}")
+                #     self.task_id = message[10:20]
+                #     self.byteBuffer += message[20:]
+                #     self.task_queue.put((self.byteBuffer, self.config_data, self.task_id))
+                #     self.byteBuffer = b""  # Clean buffer
         except Exception as e:
             print(f"Error in websocket communication: {e}")
             raise e
