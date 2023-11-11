@@ -29,7 +29,12 @@ class Server:
         self.task_queue = mp.Queue()
         self.sendingMessage_queue = mp.Queue()
         self.positionInqueue = []
-        self.functions = [self.config, self.block, self.i2i, self.cancel]
+        self.functions = {
+            'config': self.config,
+            'block': self.block,
+            'i2i': self.i2i,
+            'cancel': self.cancel
+        }
         #interrupt
         self.manager = mp.Manager()
         state=self.manager.Value("i",0)
@@ -86,42 +91,10 @@ class Server:
                     client_id = id(websocket)
                     await self.connect()
 
-                for i in range(0,len(self.functions)):
-                    if(header==self.functions[i].__name__):
-                        await self.functions[i]()
-                
+                func = self.functions.get(header)
+                if func:
+                    await func()
 
-                #config
-                # if message[0:6]==b"config":
-                #     task = getattr(websocket, 'task', None)
-                #     if task is not None:
-                #         print("Client already has a processing request pending. Blocking new request.")
-                #         continue
-                #     config_json = message[20:].decode()
-                #     config_data = json.loads(config_json)
-                #     print(f"Config Data: {config_data}")
-                #     continue
-
-                #image block
-                # if message[0:8]==b"imgblock":#imgblock
-                #     byteBuffer += message[20:]
-                #     continue
-                #last image block
-                #if message[0:8]==b"endblock":
-                    # print(f"{websocket} received final buffer block, length: {len(message)}")
-                    # byteBuffer += message[20:]
-                    # current_client_id = getattr(websocket, 'client_id', None)
-                    # self.positionInqueue.append(current_client_id)
-                    # if len(self.positionInqueue) != 1:
-                    #     await websocket.send(f"position: {len(self.positionInqueue)-1}")
-                    # setattr(websocket, 'com_id', message[10:20])
-                    # self.task_queue.put((byteBuffer, config_data, current_client_id))
-                    # byteBuffer = b"" # clean buffer
-                #cancel
-                # if message[0:6] == b"cancel":
-                #     CrossProcess.interrupt.value=1
-                #     print(f"Client {websocket} requested an interrupt.")
-                #     continue
         except Exception as e:
             print(f"Error in websocket communication: {e}")
 
@@ -168,7 +141,7 @@ class Server:
         main.cleanup_temp()
     
         self.processor.start()
-        start_server = serve(self.handle_client, "143.215.111.114", 8765)
+        start_server = serve(self.handle_client, "143.215.108.21", 8765)
         print("server open")
         asyncio.get_event_loop().run_until_complete(start_server)
         asyncio.get_event_loop().create_task(self.process_results())
