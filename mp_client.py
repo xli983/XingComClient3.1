@@ -5,11 +5,10 @@ import os
 import main
 import websockets
 from websockets.sync.client import connect
-from task_processor import image_processor
 from main import cleanup_temp
 import cuda_malloc
 from comfy.cli_args import args
-from task_processor import image_processor, CrossProcess
+from task_processor import i2i_processor, CrossProcess
 
 def init():
     main.execute_prestartup_script()
@@ -47,7 +46,7 @@ class Client:
         CrossProcess.interrupt=state
         state.value=0
         self.currentProgressObject = self.manager.dict()
-        self.processor = mp.Process(target=image_processor, args=(self.task_queue, self.sendingMessage_queue,state))
+        self.processor = mp.Process(target=i2i_processor, args=(self.task_queue, self.sendingMessage_queue,state))
 
     async def config(self):
         config_json = self.message[20:].decode()
@@ -64,6 +63,10 @@ class Client:
         self.task_queue.put((self.byteBuffer, self.config_data, self.task_id))
         self.byteBuffer = b""  # Clean buffer
 
+    async def i2t(self):
+        self.task_id = self.message[10:20]
+        self.byteBuffer += self.message[20:]
+
     async def cancel(self):
         CrossProcess.interrupt.value=1
         print(f"Client {self.websocket} requested an interrupt.")
@@ -79,22 +82,6 @@ class Client:
                 func = self.functions.get(header)
                 if func:
                     await func()
-                # Config
-                # if message[0:6] == b"config":
-                #     config_json = message[20:].decode()
-                #     self.config_data = json.loads(config_json)
-                #     print(f"Config Data: {self.config_data}")
-                # Image block
-                # elif message[0:5] == b"block":
-                #     print(message)
-                #     self.byteBuffer += message[20:]
-                # Last image block
-                # elif message[0:3] == b"i2i":
-                #     print(f"Received final image block, length: {len(message)}")
-                #     self.task_id = message[10:20]
-                #     self.byteBuffer += message[20:]
-                #     self.task_queue.put((self.byteBuffer, self.config_data, self.task_id))
-                #     self.byteBuffer = b""  # Clean buffer
         except Exception as e:
             print(f"Error in websocket communication: {e}")
             raise e

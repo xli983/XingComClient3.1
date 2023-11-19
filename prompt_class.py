@@ -58,6 +58,14 @@ class Prompt:
             getattr(self, class_type_name)[input_name] = value
         else:
             raise AttributeError(f"Invalid attribute {class_type_name}")
+    def append_attribute(self, class_type_name, input_name, value):
+            if hasattr(self, class_type_name) and input_name in getattr(self, class_type_name):
+                existing_value = getattr(self, class_type_name)[input_name]
+                new_value = f"{existing_value}, {value}"
+                getattr(self, class_type_name)[input_name] = new_value
+            else:
+                raise AttributeError(f"Invalid attribute {class_type_name} or {input_name}")
+            
     def add_section(self, section_id, section_data):
         self.data[section_id] = section_data
 
