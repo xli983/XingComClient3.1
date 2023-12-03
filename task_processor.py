@@ -52,9 +52,9 @@ def i2i_processor(i2iQueue: mp.Queue, sendingMessage_queue: mp.Queue,state):
             image_handler.set_image_value(init_img)
 
             #mode
-            prompt = Prompt(json_modes.line_art)
-            execute_outputs = json_modes.line_art_execute_outputs
-            extra_data = json_modes.line_art_extra_data
+            prompt = Prompt(json_modes.fast)
+            execute_outputs = json_modes.fast_execute_outputs
+            extra_data = json_modes.fast_extra_data
             prompt_id = '31de2ae1-c8c3-4dd0-85ff-d5fe017f9602' #change later
 
             #Lora
@@ -67,9 +67,9 @@ def i2i_processor(i2iQueue: mp.Queue, sendingMessage_queue: mp.Queue,state):
 
             #Configs - KSampler
             new_seed = random.randint(0, 2**32)
-            prompt.update_attribute("KSampler", "seed", new_seed)
-            prompt.update_attribute("KSampler", "cfg", float(config_data.get('cfg', '7')))
-            prompt.update_attribute("KSampler", "denoise", float(config_data.get('intensity', '60')) * 0.01)
+            # prompt.update_attribute("KSampler", "seed", new_seed)
+            # prompt.update_attribute("KSampler", "cfg", float(config_data.get('cfg', '7')))
+            # prompt.update_attribute("KSampler", "denoise", float(config_data.get('intensity', '60')) * 0.01)
 
             #Configs - models
             if config_data.get('model', '') is None:
@@ -100,6 +100,7 @@ def i2i_processor(i2iQueue: mp.Queue, sendingMessage_queue: mp.Queue,state):
             raise e
         
 def i2t_processor(i2tQueue: mp.Queue, sendingMessage_queue: mp.Queue, state):
+    ci = Interrogator(Config(clip_model_name="ViT-L-14/openai"))
     while True:
         if i2tQueue.empty():
             continue
@@ -110,7 +111,6 @@ def i2t_processor(i2tQueue: mp.Queue, sendingMessage_queue: mp.Queue, state):
             #image
             received = image_data
             image = decodePNG(received)
-            ci = Interrogator(Config(clip_model_name="ViT-L-14/openai"))
             prompt = ci.interrogate_fast(image)
             sendingMessage_queue.put((prompt,client_id,"prompt"))
 

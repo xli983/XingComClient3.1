@@ -21,7 +21,8 @@ class Server:
             'config': self.config,
             'block': self.block,
             'i2i': self.i2i,
-            'cancel': self.cancel
+            'cancel': self.cancel,
+            'i2t': self.i2t
         }
 
         #interrupt
@@ -33,6 +34,7 @@ class Server:
         self.mode = 'i2i'
         self.target_mode = 'i2i'
         self.switch = False
+
         self.currentProgressObject = self.manager.dict()
         self.processor = mp.Process(target=i2i_processor, args=(self.i2iQueue, self.sendingMessage_queue,state))
     
@@ -72,7 +74,7 @@ class Server:
         if self.mode != 'i2i':
             self.switch = True
             self.target_mode = 'i2i'
-            self.tryswitch()
+            await self.tryswitch()
         
         print(f"{self.websocket} received final buffer block, length: {len(self.message)}")
         setattr(self.websocket, 'task_id', self.task_id)
@@ -85,7 +87,7 @@ class Server:
         if self.mode != 'i2t':
             self.switch = True
             self.target_mode = 'i2t'
-            self.tryswitch()
+            await self.tryswitch()
         
         setattr(self.websocket, 'task_id', self.task_id)
         self.byteBuffer += self.message[20:]
@@ -98,10 +100,10 @@ class Server:
         print(f"Client {self.websocket} requested an interrupt.")
 
     async def tryswitch(self):
-        if self.mode == 'i2i' & self.i2iQueue.empty():
+        if (self.mode == 'i2i') & self.i2iQueue.empty():
             self.mode = self.target_mode
             self.switch_processor()
-        if self.mode == 'i2t' & self.i2tQueue.empty():
+        if (self.mode == 'i2t') & self.i2tQueue.empty():
             self.mode = self.target_mode
             self.switch_processor()
 
@@ -137,7 +139,7 @@ class Server:
             else:
                 try:
                     if self.switch:
-                        self.tryswitch()
+                        await self.tryswitch()
                     result_tuple = self.sendingMessage_queue.get()
                     content, client_id, Messagetype = result_tuple
                     websocket = self.clientIdList.get(client_id)
@@ -165,7 +167,6 @@ class Server:
                             if i != 0:
                                 await otherWebsocket.send(f"position: {i}")
                         await websocket.send({content})
-                        await asyncio.sleep(0.01)
                     if Messagetype == "message":
                         await websocket.send({content})
                     if Messagetype == "id":
@@ -176,7 +177,7 @@ class Server:
             
     def start(self):
         self.processor.start()
-        start_server = serve(self.handle_client, "143.215.109.88", 8765)
+        start_server = serve(self.handle_client, "143.215.97.158", 8765)
         print("server open")
         asyncio.get_event_loop().run_until_complete(start_server)
         asyncio.get_event_loop().create_task(self.process_results())
