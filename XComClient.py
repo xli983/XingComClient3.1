@@ -85,7 +85,10 @@ class ComClient:
                     client_id = id(websocket)
                     await self.connect(websocket)
                 setattr(websocket, 'task_id', message[10:20])  
-                await self.onRecv(client_id, message)
+                taskObject = Task(client_id,message)
+                func = self.functions.get(taskObject.header)
+                if func:
+                    await func(taskObject)
         except Exception as e:
             print(f"Error in websocket communication: {e}")
 
