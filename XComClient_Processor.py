@@ -23,7 +23,7 @@ def task_processor( functionDic: dict,taskQueue: mp.Queue, returnMsgQ: mp.Queue,
             init = True
         if func:
             result=func(image_data, config_data, client_id, init,state)
-        returnMsgQ.put(result,client_id,task_type)
+        returnMsgQ.put((result,client_id,task_type))
 #------------------------------------------------Process Functions start here -----------------------------------
 def i2i_init():
     main.execute_prestartup_script()

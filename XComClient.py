@@ -154,7 +154,6 @@ class ComClient:
             #     otherWebsocket = self.clientIdList.get(client_id)
             #     if i != 0:
             #         await otherWebsocket.send(f"position: {i}")
-            print(result)
             if result == "Canceled":
                 await websocket.send({result})
             while len(result)>0:
