@@ -113,20 +113,21 @@ class Server:
         self.config_data = None 
         try:
             async for message in websocket: #save client id and task id
-                self.message = message
-                self.websocket = websocket
-                header = message[:10].decode('utf-8').rstrip('\x00')
-                self.task_id = message[10:20]
-                print("received " + str(header)+str(self.task_id)) 
+                print(message)
+                # self.message = message
+                # self.websocket = websocket
+                # header = message[:10].decode('utf-8').rstrip('\x00')
+                # self.task_id = message[10:20]
+                # print("received " + str(header)+str(self.task_id)) 
 
-                client_id = getattr(websocket, 'client_id', None)
-                if client_id is None:
-                    client_id = id(websocket)
-                    await self.connect()
+                # client_id = getattr(websocket, 'client_id', None)
+                # if client_id is None:
+                #     client_id = id(websocket)
+                #     await self.connect()
 
-                func = self.functions.get(header)
-                if func:
-                    await func()
+                # func = self.functions.get(header)
+                # if func:
+                #     await func()
 
         except Exception as e:
             print(f"Error in websocket communication: {e}")
