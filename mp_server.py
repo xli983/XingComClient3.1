@@ -177,7 +177,7 @@ class Server:
             
     def start(self):
         self.processor.start()
-        start_server = serve(self.handle_client, "143.215.97.158", 8765)
+        start_server = serve(self.handle_client, "192.168.178.45", 8765)
         print("server open")
         asyncio.get_event_loop().run_until_complete(start_server)
         asyncio.get_event_loop().create_task(self.process_results())
