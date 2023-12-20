@@ -3,7 +3,6 @@ __pycache__/
 output/
 input/
 !input/example.png
-models/
 temp/
 extra_model_paths.yaml
 /.vs
