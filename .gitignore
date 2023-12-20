@@ -6,6 +6,8 @@ input/
 temp/
 extra_model_paths.yaml
 /.vs
+/models/*
+/custom_nodes/*
 .idea/
 venv/
 web/extensions/*

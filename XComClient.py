@@ -72,7 +72,7 @@ class ComClient:
     async def handle_client(self,websocket):
         try:
             async for message in websocket:
-                print(message)
+                print(message[0:20])
                 #connect client and save client id
                 client_id = getattr(websocket, 'client_id', None)
                 if client_id is None:
