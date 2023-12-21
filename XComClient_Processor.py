@@ -40,10 +40,13 @@ def i2i_init():
     from nodes import init_custom_nodes
     init_custom_nodes()
 
+executor=None
+
 def image2image(image_data, config_data, client_id, init,state):
+    global executor
     if init:
         i2i_init()
-        e = execution.PromptExecutor()
+        executor = execution.PromptExecutor()
     try:
         ProgressTracker.interrupter=state
         ProgressTracker.interrupter.value=0
@@ -88,7 +91,7 @@ def image2image(image_data, config_data, client_id, init,state):
         prompt.append_attribute("CLIPTextEncode_1", "text", "easynegative" + config_data.get('negPrompt', 'easynegative'))
 
         print(prompt.data)
-        image = e.execute(prompt.data, prompt_id, extra_data, execute_outputs)
+        image = executor.execute(prompt.data, prompt_id, extra_data, execute_outputs)
         if image == "Interrupted":
             return("Canceled")
 
@@ -99,9 +102,9 @@ def image2image(image_data, config_data, client_id, init,state):
         image = image.convert('RGBA')
         result = image_to_png_bytestring(image.resize((shape[0], shape[1]), Image.LANCZOS))
         return(result)
-    except Exception as e:
-        print(f"Error: {e}")
-        raise e
+    except Exception as executor:
+        print(f"Error: {executor}")
+        raise executor
     
 def image2text(image_data, config_data, client_id, init,state):
     if init is False:
