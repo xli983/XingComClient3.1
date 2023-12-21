@@ -72,7 +72,8 @@ class ComClient:
     async def handle_client(self,websocket):
         try:
             async for message in websocket:
-                print(message[0:20])
+                print("\033[93mheader:", message[:10].replace(b'\x00', b'').decode(),
+                        "id:", message[10:20].decode(), "length:", len(message[20:]), "\033[0m")
                 #connect client and save client id
                 client_id = getattr(websocket, 'client_id', None)
                 if client_id is None:

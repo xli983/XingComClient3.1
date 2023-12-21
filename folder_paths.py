@@ -155,7 +155,8 @@ def get_full_path(folder_name, filename):
         full_path = os.path.join(x, filename)
         if os.path.isfile(full_path):
             return full_path
-
+        
+    print("\033[91mFile not found: " + filename + " in " + folder_name + "\033[0m")
     return None
 
 def get_filename_list_(folder_name):

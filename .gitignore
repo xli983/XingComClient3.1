@@ -6,7 +6,9 @@ input/
 temp/
 extra_model_paths.yaml
 /.vs
-/models/*
+/models/checkpoints/*
+/models/loras/*
+/models/vae/*
 /custom_nodes/*
 .idea/
 venv/
