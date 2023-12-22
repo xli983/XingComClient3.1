@@ -2,47 +2,50 @@ import multiprocessing as mp
 import asyncio
 import json
 import os
-import main
 import websockets
 from websockets.sync.client import connect
 from websockets.server import serve
-from main import cleanup_temp
-from XComClient_Processor import task_processor,CrossProcess, image2image, image2text
 
 
 
-class Task:
-    def __init__(self, client_id, message):
-        self.message = message
-        self.client_id = client_id
-        self.task_id =  message[10:20]
-        self.byteBuffer = b""
-        self.config_data = None
-        self.type = None
+
+def task_processor(functions: dict,taskQueue: mp.Queue, returnMsgQ: mp.Queue, state):
+    while True:
+        try:
+            if taskQueue.empty():
+                continue
+            task_tuple = taskQueue.get()
+            client_id,header,task_id,client_data,content=task_tuple
+            func = functions[header]
+
+            if func:
+                result=func(client_data, content)
+            returnMsgQ.put((client_id,header,task_id,result))
+        except Exception as e:
+            print(f"Error in task processing: {e}")
 
 
+
+        # task.byteBuffer += task.message[20:]
+        # self.taskQueue.put((task.byteBuffer, task.config_data, task.client_id, "image2image"))
 class ComClient:
     def __init__(self):
         self.server=None
         self.client=None
         self.functions = {
-            'config': self.config,
-            'block': self.block,
-            'i2i': self.i2i,
-            'cancel': self.cancel,
-            'i2t': self.i2t
         }
         self.taskQueue = mp.Queue()
         self.returnMsgQ=mp.Queue()
-        self.clientIdList = {}
-        self.functionDic = {}
+        self.clients = {}
+        self.clientsData = {}
+        self.blockbuffers={}
         #interrupt
         self.manager = mp.Manager()
         state=self.manager.Value("i",0)
-        CrossProcess.interrupt=state
+        self.interrupt=state
         state.value=0
         #functions
-        self.taskProcessor =mp.Process(target=task_processor, args=(self.functionDic,self.taskQueue,self.returnMsgQ,state))
+        self.taskProcessor =mp.Process(target=task_processor, args=(self.functions,self.taskQueue,self.returnMsgQ,state),name="taskProcessor")
 
     def asClient():
         return
@@ -63,122 +66,106 @@ class ComClient:
             
     def asServer(self,ip, port):
         self.taskProcessor.start()
-        start_server = serve(self.handle_client,ip, port)
-        print("server open")
+        start_server = serve(self.asServer_onRecv,ip, port)
+        print("\033[93m Server started \033[0m")
         asyncio.get_event_loop().run_until_complete(start_server)
-        asyncio.get_event_loop().create_task(self.process_results())
+        asyncio.get_event_loop().create_task(self.global_send())
         asyncio.get_event_loop().run_forever()
 
-    async def handle_client(self,websocket):
+
+    async def asServer_onRecv(self,websocket):
         try:
             async for message in websocket:
                 print("\033[93mheader:", message[:10].replace(b'\x00', b'').decode(),
                         "id:", message[10:20].decode(), "length:", len(message[20:]), "\033[0m")
                 #connect client and save client id
-                client_id = getattr(websocket, 'client_id', None)
-                if client_id is None:
-                    client_id = id(websocket)
-                    await self.connect(websocket)
-                setattr(websocket, 'task_id', message[10:20]) 
-                taskObject = getattr(websocket, 'task', None)
-                if taskObject is None:
-                    taskObject = Task(client_id,message)
-                    setattr(websocket, 'task', taskObject)
-                taskObject.message = message
-                func = self.functions.get(message[:10].decode('utf-8').rstrip('\x00'))
-                if func:
-                    await func(taskObject)
+
+                self.clients[id(websocket)] = websocket
+                header=message[:10].replace(b'\x00', b'').decode()
+                taskId=message[10:20]
+                if id(websocket) not in self.blockbuffers:
+                    self.blockbuffers[id(websocket)]=[]
+                if id(websocket) not in self.clientsData:
+                    self.clientsData[id(websocket)]={}
+                taskContent=message[20:]
+                
+                await self.global_onRecv(id(websocket),header,taskId,taskContent)
+
         except Exception as e:
             print(f"Error in websocket communication: {e}")
 
 
-    async def connect(self,websocket):
-        self.clientIdList[id(websocket)] = websocket
-        setattr(websocket, 'client_id', id(websocket))
 
+    async def global_onRecv(self, client_id,header,task_Id,content):
 
-    async def onRecv(self, client_id, message):
-        taskObject = Task(client_id,message)
-        func = self.functions.get(taskObject.header)
-        if func:
-            await func(taskObject)
-        return 
-    #-------------------------------------Com Functions Start here--------------------------------------------#
-    async def config(self,task):
-        config_json =task.message[20:].decode()
-        task.config_data = json.loads(config_json)
-        self.returnMsgQ.put((task.message[:20],task.client_id,"message"))
-        print(f"Config Data: {task.config_data}")
+        try:
+            if header == "block":
+                self.blockbuffers[client_id].append(content)
+                return
+
+            if header == "config":
+                config_json =content
+                config_data = json.loads(config_json)
+                self.clientsData[client_id][header]=config_data
+                self.returnMsgQ.put((client_id,header,task_Id,"config received"))
+                print(f"Config Data: {content}")
+                return
+
+            if header == "cancel":
+                self.interrupt.value=1
+                print(f"Client {self.websocket} requested an interrupt.")
+                return
+            
+            if client_id in self.blockbuffers:#if there is a block buffer, concat it
+                self.blockbuffers[client_id].append(content)
+                content=b"".join(self.blockbuffers[client_id])
+                del self.blockbuffers[client_id]#clean buffer
+
+            self.taskQueue.put((client_id,header,task_Id,self.clientsData[client_id],content))
+            #await self.functions[header](self.clientsData[client_id],content)
+
+        except Exception as e:
+            print(f"Error in websocket communication: {e}")
+            return
     
-    async def block(self,task):
-        task.byteBuffer += task.message[20:]
-
-    async def i2i(self,task):      
-        task.byteBuffer += task.message[20:]
-        self.taskQueue.put((task.byteBuffer, task.config_data, task.client_id, "image2image"))
-        task.byteBuffer = b"" # clean buffer
-    
-    async def i2t(self,task):
-        task.byteBuffer += task.message[20:]
-        self.taskQueue.put((task.byteBuffer, task.config_data, task.client_id, "image2text"))
-        task.byteBuffer = b"" # clean buffer
-
-    async def cancel(self,task):
-        CrossProcess.interrupt.value=1
-        print(f"Client {self.websocket} requested an interrupt.")
-    
-    #--------------------------------------------------Com Functions end here ------------------------------------
      
-    async def process_results(self):
+    async def global_send(self):
         while True:
             if self.returnMsgQ.empty():
                 await asyncio.sleep(0.1)
             else:
                 try:
                     result_tuple = self.returnMsgQ.get()
-                    result,client_id,task_type = result_tuple
+                    client_id,header,task_id,content = result_tuple
+                    header = (header+"0"*(10-len(header))).encode('utf-8')
+                    if isinstance(task_id, str):
+                        task_id = task_id.encode('utf-8')
+                    if isinstance(header, str):
+                        header = header.encode('utf-8')
+                    if isinstance(content, str):
+                        content = content.encode('utf-8')
                     if client_id == -1:
-                        await self.clientSend(result,task_type)
+                        await self.clientSend(result,header)
                     else:
-                        await self.serverSend(result,client_id,task_type)
+                        await self.asServer_send(client_id,header,task_id,content)
                 except Exception as e:
                     print(f"Error in sending message to websocket: {e}")
     
-    async def serverSend(self,result,client_id,task_type):
-        websocket = self.clientIdList.get(client_id)
-        task_id = getattr(websocket, 'task_id', None)
-        if task_type == "message":
-            await websocket.send({result})
-        if task_type == "image2image":
-            # first_client_id = self.positionInqueue.pop(0)
-            # for i, client_id in enumerate(self.positionInqueue):
-            #     otherWebsocket = self.clientIdList.get(client_id)
-            #     if i != 0:
-            #         await otherWebsocket.send(f"position: {i}")
-            if result == "Canceled":
-                await websocket.send({result})
-            while len(result)>0:
-                if len(result)>100000:
-                    await websocket.send(b"block00000"+task_id+result[0:100000])
-                    result=result[100000:]
-                else:
-                    await websocket.send(b"i2i0000000"+task_id+result)
-                    result = b""
-                await asyncio.sleep(0.01)
+    async def asServer_send(self,client_id,header,task_id,content):
+        websocket = self.clients.get(client_id)
+        while len(content)>0:
+            if len(content)>100000:
+                await websocket.send(b"block00000"+task_id+content[0:100000])
+                content=content[100000:]
+            else:
+                await websocket.send(header+task_id+content)
+                content = b""
             await asyncio.sleep(0.01)
-        if task_id == "task_type":
-            # first_client_id = self.positionInqueue.pop(0)
-            # for i, client_id in enumerate(self.positionInqueue):
-            #     otherWebsocket = self.clientIdList.get(client_id)
-            #     if i != 0:
-            #         await otherWebsocket.send(f"position: {i}")
-            await websocket.send({result})
+        await asyncio.sleep(0.01)
 
     def registerFunc(self, func):
-        if func == "image2image":
-            self.functionDic[func] = image2image
-        if func == "image2text":
-            self.functionDic[func] = image2text
+        fun_name=func.__name__
+        self.functions[fun_name]=func
 
 
 

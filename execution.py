@@ -124,7 +124,7 @@ def format_value(x):
 
 
 def recursive_execute(prompt, outputs, current_item, extra_data, executed, prompt_id, outputs_ui, object_storage):
-    if ProgressTracker.interrupter.value!=0:
+    if ProgressTracker.interrupter:
         raise comfy.model_management.InterruptProcessingException()
     comfy.model_management.throw_exception_if_processing_interrupted()
     result = None

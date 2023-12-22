@@ -1,14 +1,12 @@
 import json_modes
 import random
-import execution
-import image_handler
 
 import multiprocessing as mp
 from multiprocessing.managers import BaseManager
 from multiprocessing import Manager, Process, Value
 from multiprocessing import Pool, Queue, cpu_count
 
-from PIL import Image
+from PIL import Image, ImageFile
 import numpy as np
 import io
 from io import BytesIO
@@ -62,10 +60,3 @@ def add_lora(self, input_lora):
         # Update values for the next iteration
         base_model_clip = current_id
         current_id += 1
-
-
-class Task:
-    def __init__(self, byteBuffer, config_data,client_id):
-        self.image_data = byteBuffer
-        self.config_data = config_data
-        self.client_id = client_id
