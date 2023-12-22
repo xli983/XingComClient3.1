@@ -14,8 +14,7 @@ if mp.current_process().name == "taskProcessor":
     from reversePrompt.clip_interrogator import Config, Interrogator
 
 
-
-def i2i_init():
+def comfy_init():
     main.execute_prestartup_script()
     if os.name == "nt":
         import logging
@@ -33,13 +32,14 @@ def i2i_init():
 comfyInited = False
 executor = None
 current_model = None
+
 def i2i(client_data, message):
     global comfyInited
     global executor
     global current_model
     ProgressTracker.interrupter=False
     if not comfyInited:
-        i2i_init()
+        comfy_init()
         executor = execution.PromptExecutor()
         comfyInited = True
         
