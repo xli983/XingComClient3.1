@@ -46,6 +46,7 @@ def i2i(client_data, message):
     # ProgressTracker.interrupter=state
     # ProgressTracker.interrupter.value=0
     #image
+
     try:
         config=client_data["config"]
         init_img: Image.Image
