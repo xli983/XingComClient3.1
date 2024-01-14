@@ -26,9 +26,8 @@ def task_processor(functions: dict, taskQueue: mp.Queue, returnMsgQ: mp.Queue, s
 class ComClient:
     def __init__(self):
         self.server = None
-        self.client = None
         self.functions = {}
-        self.taskQueue = mp.Queue()
+        self.taskQ = mp.Queue()
         self.returnMsgQ = mp.Queue()
         self.clients = {}
         self.clientsCFG = {}
@@ -41,18 +40,27 @@ class ComClient:
         # functions
         self.taskProcessor = mp.Process(
             target=task_processor,
-            args=(self.functions, self.taskQueue, self.returnMsgQ, state),
+            args=(self.functions, self.taskQ, self.returnMsgQ, state),
             name="taskProcessor",
         )
 
 
-    def asClient(self):
-        asyncio.get_event_loop().run_until_complete(self.client_start())
-
-
-    async def client_start(self):
+    def asClient(self,ip):
         self.taskProcessor.start()
-        async with websockets.connect(self.server_uri) as websocket:
+        asyncio.get_event_loop().run_until_complete(self.connect_cloud(ip))
+
+
+    def asServer(self, ip, port):
+        self.taskProcessor.start()
+        local_server = serve(self.asServer_onRecv, ip, port)
+        print("\033[93m Server started \033[0m")
+        asyncio.get_event_loop().run_until_complete(local_server)
+        asyncio.get_event_loop().create_task(self.global_send())
+        asyncio.get_event_loop().run_forever()
+
+
+    async def connect_cloud(self,ip):
+        async with websockets.connect(ip) as websocket:
             print("\033[93m Connected to Server \033[0m")
             self.server_websocket = websocket
             receive_task = asyncio.create_task(self.asClient_onRecv(websocket))
@@ -87,55 +95,55 @@ class ComClient:
         except Exception as e:
             print(f"Error in websocket communication: {e}")
 
-    def asServer(self, ip, port):
-        self.taskProcessor.start()
-        start_server = serve(self.asServer_onRecv, ip, port)
-        print("\033[93m Server started \033[0m")
-        asyncio.get_event_loop().run_until_complete(start_server)
-        asyncio.get_event_loop().create_task(self.global_send())
-        asyncio.get_event_loop().run_forever()
 
     async def asServer_onRecv(self, websocket):
+
         wsId = id(websocket)
         try:
             async for message in websocket:
-                print(
-                    "\033[93mheader:",
-                    message[:10].replace(b"\x00", b"").decode(),
-                    "id:",
-                    message[10:20].decode(),
-                    "length:",
-                    len(message[20:]),
-                    "\033[0m",
-                )
-                # connect client and save client id
-
                 self.clients[wsId] = websocket
-                header = message[:10].replace(b"\x00", b"").decode()
-                taskId = message[10:20]
 
-                if wsId not in self.blockbuffers:
-                    self.blockbuffers[id(websocket)] = []
-                if wsId not in self.clientsCFG:
-                    self.clientsCFG[id(websocket)] = {}
-                taskContent = message[20:]
-
-                await self.global_onRecv(wsId, header, taskId, taskContent)
+                await self.global_onRecv(wsId, message)
 
         except Exception as e:
             print(f"Error in websocket communication: {e}")
 
-    async def global_onRecv(self, client_id, header, task_Id, content):
+    async def global_onRecv(self, wsId, message):
+        '''
+        WebSocket Object should NOT go inside here, only wsID
+        
+        '''
+        print(
+            "\033[93mheader:",
+            message[:10].replace(b"\x00", b"").decode(),
+            "id:",
+            message[10:20].decode(),
+            "length:",
+            len(message[20:]),
+            "\033[0m",
+        )
+        # connect client and save client id
+
+        header = message[:10].replace(b"\x00", b"").decode()
+        taskId = message[10:20]
+
+        if wsId not in self.blockbuffers:
+            self.blockbuffers[wsId] = []
+        if wsId not in self.clientsCFG:
+            self.clientsCFG[wsId] = {}
+
+        content = message[20:]
+        
         try:
             if header == "block":
-                self.blockbuffers[client_id].append(content)
+                self.blockbuffers[wsId].append(content)
                 return
 
             if header == "config":
                 config_json = content
                 config_data = json.loads(config_json)
-                self.clientsCFG[client_id][header] = config_data
-                self.returnMsgQ.put((client_id, header, task_Id, "config received"))
+                self.clientsCFG[wsId][header] = config_data
+                self.returnMsgQ.put((wsId, header, taskId, "config received"))
                 print(f"Config Data: {content}")
                 return
 
@@ -144,13 +152,13 @@ class ComClient:
                 print(f"Client {self.websocket} requested an interrupt.")
                 return
 
-            if client_id in self.blockbuffers:  # if there is a block buffer, concat it
-                self.blockbuffers[client_id].append(content)
-                content = b"".join(self.blockbuffers[client_id])
-                del self.blockbuffers[client_id]  # clean buffer
+            if wsId in self.blockbuffers:  # if there is a block buffer, concat it
+                self.blockbuffers[wsId].append(content)
+                content = b"".join(self.blockbuffers[wsId])
+                del self.blockbuffers[wsId]  # clean buffer
 
-            self.taskQueue.put(
-                (client_id, header, task_Id, self.clientsCFG[client_id], content)
+            self.taskQ.put(
+                (wsId, header, taskId, self.clientsCFG[wsId], content)
             )
             # await self.functions[header](self.clientsData[client_id],content)
 
