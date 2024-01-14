@@ -1,7 +1,6 @@
-
-from XComClient import ComClient
-import socket
 from init import *
+
+
 if mp.current_process().name == "taskProcessor":
     import traceback
     import execution
@@ -32,6 +31,13 @@ def comfy_init():
 comfyInited = False
 executor = None
 current_model = None
+current_lora = None
+
+
+
+# Function to read the last printed line
+def readLastConsoleLine():
+    return capture_stream.output[-1] if capture_stream.output else None
 
 def i2i(client_data, message):
     global comfyInited
@@ -66,9 +72,11 @@ def i2i(client_data, message):
         #Lora
         LoraList = config["lora"]
 
-        if LoraList is not None and LoraList != []:
+        if LoraList is not None and LoraList != [] and LoraList != current_lora:
             prompt.add_lora(LoraList)
             prompt.link_lora(LoraList)
+
+        current_lora = LoraList
             
 
         #Configs - KSampler

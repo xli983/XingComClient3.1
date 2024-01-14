@@ -429,6 +429,7 @@ class ProgressBar:
         self.hook = PROGRESS_BAR_HOOK
 
     def update_absolute(self, value, total=None, preview=None):
+        print("\nXING_PROGRESS:"+str(value)+"/"+str(total))
         if total is not None:
             self.total = total
         if value > self.total:

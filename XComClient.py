@@ -5,12 +5,36 @@ import os
 import websockets
 from websockets.sync.client import connect
 from websockets.server import serve
+import time
 
+import sys
+class ConsoleCapture:
+    def __init__(self):
+        self.output = ["" for _ in range(10)] # Capture the last 10 lines
+
+    def write(self, text):
+        # Capture the printed text
+        if(text == '\n'):
+            return
+        self.output.append(text)
+        self.output.pop(0)
+
+        sys.stdout= sys.__stdout__
+        print(text)
+        sys.stdout = self
+
+    def flush(self):
+        pass
+    
+# Redirect sys.stdout to the custom stream
+capture_stream = ConsoleCapture()
+sys.stdout = capture_stream
 
 def process_process(functions: dict, taskQueue: mp.Queue, returnMsgQ: mp.Queue):
     while True:
         try:
             if taskQueue.empty():
+                time.sleep(0.1)
                 continue
             task_tuple = taskQueue.get()
             client_id, header, task_id, client_data, content = task_tuple
@@ -19,6 +43,8 @@ def process_process(functions: dict, taskQueue: mp.Queue, returnMsgQ: mp.Queue):
             if func:
                 result = func(client_data, content)
             returnMsgQ.put((client_id, header, task_id, result))
+
+
         except Exception as e:
             print(f"Error in task processing: {e}")
 
@@ -83,6 +109,7 @@ class ComClient:
     async def asServer_onRecv(self, websocket):
 
         clientID = id(websocket)
+        print(f"Client {clientID} connected")
         try:
             async for message in websocket:
                 self.clients[clientID] = websocket
@@ -120,10 +147,12 @@ class ComClient:
         
         try:
             if header == "block":
+                # if block, save it to buffer
                 self.blockbuffers[clientID].append(content)
                 return
 
             if header == "config":
+                # if config, save it to config
                 config_json = content
                 config_data = json.loads(config_json)
                 self.clientsCFG[clientID][header] = config_data
@@ -132,19 +161,25 @@ class ComClient:
                 return
 
             if header == "cancel":
+                # if cancel, cancel the task, not implemented yet
+                raise NotImplementedError
                 self.interrupt.value = 1
                 print(f"Client {self.websocket} requested an interrupt.")
                 return
+            
 
-            if clientID in self.blockbuffers:  # if there is a block buffer, concat it
+            #if program reaches here, it means it is a normal task
+
+
+            if clientID in self.blockbuffers:
+                # if there is a block buffer, concat it
                 self.blockbuffers[clientID].append(content)
                 content = b"".join(self.blockbuffers[clientID])
-                del self.blockbuffers[clientID]  # clean buffer
+                del self.blockbuffers[clientID] # clean buffer
 
             self.taskQ.put(
                 (clientID, header, taskId, self.clientsCFG[clientID], content)
             )
-            # await self.functions[header](self.clientsData[client_id],content)
 
         except Exception as e:
             print(f"Error in websocket communication: {e}")
