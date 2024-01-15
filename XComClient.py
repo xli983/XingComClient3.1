@@ -50,7 +50,7 @@ def process_process(functions: dict, taskQueue: mp.Queue, returnMsgQ: mp.Queue):
 
 
 class ComClient:
-    def __init__(self,funcs):
+    def __init__(self,funcs,mode: str, ip=None, port=None):
         '''
         init a ComClient with AI functions
         funcs: a list of AI functions
@@ -76,19 +76,19 @@ class ComClient:
             name="taskProcessor",
         )
 
+
+        if(mode == "server"):
+            print("\033[93m Server started \033[0m")
+            asyncio.get_event_loop().run_until_complete(serve(self.asServer_onRecv, ip, port))
+        elif(mode == "client"):
+            asyncio.get_event_loop().create_task(self.connect_cloud(ip))
+
         self.taskProcessor.start()
-
-
-    def asClient(self,ip):
-        asyncio.get_event_loop().run_until_complete(self.connect_cloud(ip))
-
-
-    def asServer(self, ip, port):
-        local_server = serve(self.asServer_onRecv, ip, port)
-        print("\033[93m Server started \033[0m")
-        asyncio.get_event_loop().run_until_complete(local_server)
+        
         asyncio.get_event_loop().create_task(self.global_send())
         asyncio.get_event_loop().run_forever()
+
+
 
 
     async def connect_cloud(self,ip):
@@ -214,7 +214,7 @@ class ComClient:
                     if isinstance(content, str):
                         content = content.encode("utf-8")
                     if client_id == -1:
-                        await self.clientSend(header, task_id, content)
+                        await self.server_websocket.send(header + task_id + content)
                     else:
                         await self.asServer_send(client_id, header, task_id, content)
                 except Exception as e:

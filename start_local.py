@@ -14,5 +14,4 @@ def get_local_ip():
 if __name__ == "__main__":
     local_ip = get_local_ip()
     print("\033[93m Local IP Address: "+local_ip+" \033[0m")
-    comclient = ComClient([i2i])
-    comclient.asServer(local_ip, 8765)
+    comclient = ComClient([i2i],"server",local_ip,8765)

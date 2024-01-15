@@ -5,10 +5,19 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: Current File",
+            "name": "local",
             "type": "python",
             "request": "launch",
             "program": "start_local.py",
+            "console": "integratedTerminal",
+            "justMyCode": false
+        }
+        ,
+        {
+            "name": "remote",
+            "type": "python",
+            "request": "launch",
+            "program": "start_cloud.py",
             "console": "integratedTerminal",
             "justMyCode": false
         }
