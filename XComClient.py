@@ -125,13 +125,13 @@ class ComClient:
         
         '''
         print(
-            "\033[93mheader:",
-            message[:10].replace(b"\x00", b"").decode(),
-            "id:",
-            message[10:20].decode(),
-            "length:",
-            len(message[20:]),
-            "\033[0m",
+            "\033[93mheader:"+
+            message[:10].replace(b"\x00", b"").decode()+
+            "   id:"+
+            message[10:20].decode()+
+            "   length:"+
+            str(len(message[20:]))+
+            "\033[0m"
         )
         # connect client and save client id
 
