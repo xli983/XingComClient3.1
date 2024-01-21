@@ -64,9 +64,9 @@ def i2i(client_data, message):
         image_handler.set_image_value(init_img)
 
         #mode
-        prompt = Prompt(json_modes.fast)
-        execute_outputs = json_modes.fast_execute_outputs
-        extra_data = json_modes.fast_extra_data
+        prompt = Prompt(json_modes.SDXL)
+        execute_outputs = json_modes.SDXL_outputs
+        extra_data = json_modes.SDXL_data
         prompt_id = '31de2ae1-c8c3-4dd0-85ff-d5fe017f9602' #change later
 
         #Lora
@@ -88,15 +88,17 @@ def i2i(client_data, message):
         #Configs - models
         model = config['model']
         if model == None or model == "":
-            model = "etherBluMix_etherBluMix5.safetensors"
+            model = "SDXLAnimeBulldozer_v10.safetensors"
         if current_model != model:
             current_model = model
             prompt.update_attribute("CheckpointLoaderSimple", "ckpt_name", model)
 
         #Configs - prompt
         pos_prompt = config['prompt']
+        print("positive prompt test")
+        print("positive prompt is" + pos_prompt)
         neg_prompt = config["negPrompt"]
-        prompt.append_attribute("CLIPTextEncode", "text", "masterpiece, best quality," + pos_prompt)
+        prompt.update_attribute("CLIPTextEncode", "text", "masterpiece, best quality," + pos_prompt)
         prompt.append_attribute("CLIPTextEncode_1", "text", "easynegative" + neg_prompt)
 
         print(prompt.data)
