@@ -35,9 +35,6 @@ current_lora = None
 
 
 
-# Function to read the last printed line
-def readLastConsoleLine():
-    return capture_stream.output[-1] if capture_stream.output else None
 
 def i2i(client_data, message):
     global comfyInited

@@ -1,4 +1,5 @@
 import multiprocessing as mp
+from multiprocessing.shared_memory import SharedMemory
 import asyncio
 import json
 import os
@@ -6,18 +7,28 @@ import websockets
 from websockets.sync.client import connect
 from websockets.server import serve
 import time
-
 import sys
-class ConsoleCapture:
-    def __init__(self):
-        self.output = ["" for _ in range(10)] # Capture the last 10 lines
+import numpy as np
 
+try:
+    progress = SharedMemory(name="progress", create=True, size=1*8)
+except FileExistsError:
+    progress = SharedMemory(name="progress", create=False, size=1*8)
+
+try:
+    curClient = SharedMemory(name="curClient", create=True, size=1*8)
+except FileExistsError:
+    curClient = SharedMemory(name="curClient", create=False, size=1*8)
+progressfloat = np.ndarray((1,), dtype=np.float64, buffer=progress.buf)
+curClientint = np.ndarray((1,), dtype=np.int64, buffer=curClient.buf)
+
+class ConsoleCapture:
     def write(self, text):
         # Capture the printed text
-        if(text == '\n'):
+        if text == '\n':
             return
-        self.output.append(text)
-        self.output.pop(0)
+        if text[1:5]=="XING" :
+            progressfloat[0]=float(text[15:])
 
         sys.stdout= sys.__stdout__
         print(text)
@@ -39,7 +50,7 @@ def process_process(functions: dict, taskQueue: mp.Queue, returnMsgQ: mp.Queue):
             task_tuple = taskQueue.get()
             client_id, header, task_id, client_data, content = task_tuple
             func = functions[header]
-
+            curClientint[0]=client_id
             if func:
                 result = func(client_data, content)
             returnMsgQ.put((client_id, header, task_id, result))
@@ -199,8 +210,15 @@ class ComClient:
         await asyncio.sleep(0.01)
 
     async def global_send(self):
+        lastProgress = 0
         while True:
             if self.returnMsgQ.empty():
+                curProgress = progressfloat[0]
+                if curProgress != lastProgress:
+                    lastProgress = curProgress
+                    curClientID = curClientint[0]
+                    print(f"\033[92mXING: {curClientID},{curProgress}\033[0m")
+                    self.returnMsgQ.put((curClientID, "progress", "0000000000", str(curProgress)[0:10]))
                 await asyncio.sleep(0.1)
             else:
                 try:
