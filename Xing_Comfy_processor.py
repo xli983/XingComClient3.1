@@ -1,4 +1,5 @@
 from init import *
+from WhiteRemoval import process_image
 
 
 if mp.current_process().name == "taskProcessor":
@@ -64,8 +65,8 @@ def i2i(client_data, message):
         image_handler.set_image_value(init_img)
 
         #mode
-        prompt = Prompt(json_modes.SDXL)
-        execute_outputs = json_modes.SDXL_outputs
+        prompt = Prompt(json_modes.SDXLrembg)
+        execute_outputs = json_modes.SDXLrembg_output
         extra_data = json_modes.SDXL_data
         prompt_id = '31de2ae1-c8c3-4dd0-85ff-d5fe017f9602' #change later
 
@@ -78,6 +79,7 @@ def i2i(client_data, message):
 
         current_lora = LoraList
             
+
 
         #Configs - KSampler
         new_seed = random.randint(0, 2**32)
@@ -98,9 +100,19 @@ def i2i(client_data, message):
         print("positive prompt test")
         print("positive prompt is" + pos_prompt)
         neg_prompt = config["negPrompt"]
-        prompt.update_attribute("CLIPTextEncode", "text", "masterpiece, best quality," + pos_prompt)
-        prompt.append_attribute("CLIPTextEncode_1", "text", "easynegative" + neg_prompt)
 
+        #For Remove Background (Layering) Experimental Feature
+        rembgtest = False
+
+        if rembgtest:
+            prompt.update_attribute("CLIPTextEncode", "text", "masterpiece, best quality," + "completely  white background," + "empty background," + pos_prompt)
+            prompt.append_attribute("CLIPTextEncode_1", "text", "easynegative" + neg_prompt)
+        else:
+            prompt.update_attribute("CLIPTextEncode", "text", "masterpiece, best quality," + pos_prompt)
+            prompt.append_attribute("CLIPTextEncode_1", "text", "easynegative" + neg_prompt)
+
+
+        
         print(prompt.data)
         image = executor.execute(prompt.data, prompt_id, extra_data, execute_outputs)
         if image == "Interrupted":
@@ -111,8 +123,16 @@ def i2i(client_data, message):
         #!!!!!!!!! for testing !!!!!!!!!
         
         image = image.convert('RGBA')
+
+
+        #Experimental Removing Background Feature
+        if rembgtest:
+            image = process_image(image)
+
         result = image_to_png_bytestring(image.resize((shape[0], shape[1]), Image.LANCZOS))
-        return(result)
+
+        return result
+
     except Exception as e:
         print(traceback.format_exc())
         raise e
