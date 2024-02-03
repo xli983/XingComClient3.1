@@ -4,7 +4,7 @@ import asyncio
 import json
 import main
 from websockets.server import serve
-from task_processor import i2i_processor, CrossProcess, i2t_processor
+from Xing_Comfy_processor import i2i_processor, CrossProcess, i2t_processor
 from comfy.cli_args import args
 
 

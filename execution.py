@@ -201,7 +201,7 @@ def recursive_execute(prompt, outputs, current_item, extra_data, executed, promp
 
     executed.add(unique_id)
 
-    return (True, None, None,result)
+    return (True, None, None, result)
 
 def recursive_will_execute(prompt, outputs, current_item):
     unique_id = current_item
@@ -383,6 +383,7 @@ class PromptExecutor:
                 # This call shouldn't raise anything if there's an error deep in
                 # the actual SD code, instead it will report the node where the
                 # error was raised
+                print([prompt, self.outputs, output_node_id, extra_data, executed, prompt_id, self.outputs_ui, self.object_storage])
                 success, error, ex, result = recursive_execute(prompt, self.outputs, output_node_id, extra_data, executed, prompt_id, self.outputs_ui, self.object_storage)
                 if success is not True:
                     self.handle_execution_error(prompt_id, prompt, current_outputs, executed, error, ex)

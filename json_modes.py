@@ -302,9 +302,9 @@ SDXL = {
   "3": {
     "inputs": {
       "seed": 1000,
-      "steps": 20,
+      "steps": 35,
       "cfg": 15,
-      "sampler_name": "euler",
+      "sampler_name": "dpmpp_2m",
       "scheduler": "karras",
       "denoise": 0.9500000000000001,
       "model": [
@@ -430,10 +430,10 @@ SDXLrembg ={
     "inputs": {
       "seed": 1000,
       "steps": 35,
-      "cfg": 10,
-      "sampler_name": "euler",
+      "cfg": 8,
+      "sampler_name": "dpmpp_2m",
       "scheduler": "karras",
-      "denoise": 0.9700000000000001,
+      "denoise": 0.900000000000001,
       "model": [
         "4",
         0
@@ -573,7 +573,7 @@ LineArtNew = {
       "cfg": 10,
       "sampler_name": "euler",
       "scheduler": "karras",
-      "denoise": 0.2,
+      "denoise": 0.50,
       "model": [
         "17",
         0
@@ -708,3 +708,276 @@ LineArtNew = {
 }
 
 LineArtNew_output = ['63']
+
+LineArtSDXL = {
+  "3": {
+    "inputs": {
+      "seed": 272468417966614,
+      "steps": 20,
+      "cfg": 10,
+      "sampler_name": "dpmpp_3m_sde",
+      "scheduler": "karras",
+      "denoise": 0.4,
+      "model": [
+        "14",
+        0
+      ],
+      "positive": [
+        "16",
+        0
+      ],
+      "negative": [
+        "7",
+        0
+      ],
+      "latent_image": [
+        "12",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler"
+    }
+  },
+  "4": {
+    "inputs": {
+      "ckpt_name": "nablaThetaA5LinesAndColors_v10.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "Load Checkpoint"
+    }
+  },
+  "6": {
+    "inputs": {
+      "text": "MAI SAKURAJIMA, LONG HAIR, BANGS, (BLACK HAIR:1.5), HAIR ORNAMENT, (PURPLE EYES:1.1), HAIRCLIP, RABBIT HAIR ORNAMENT,\nSKIRT, SHIRT, SCHOOL UNIFORM, WHITE SHIRT, SHORT SLEEVES, PANTYHOSE, PLEATED SKIRT, COLLARED SHIRT, BLUE SKIRT, BLACK PANTYHOSE, RED NECKTIE, JACKET, (BROWN JACKET:1.5),\nBOW, ANIMAL EARS, CLEAVAGE, BARE SHOULDERS, PANTYHOSE, BOWTIE, BLACK FOOTWEAR, RABBIT EARS, HIGH HEELS, LEOTARD, BLACK PANTYHOSE, STRAPLESS, BLACK BOW, DETACHED COLLAR, FAKE ANIMAL EARS, PLAYBOY BUNNY, BLACK LEOTARD, STRAPLESS LEOTARD, THIGHBAND PANTYHOSE, BLACK BOWTIE, 1 girl",
+      "clip": [
+        "14",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Prompt)"
+    }
+  },
+  "7": {
+    "inputs": {
+      "text": "text, watermark, negativeXL_D,unaestheticXL_hk1,photorealistic,3d model,cinematic,bad anatomy,blurry,disembodied limb,worst quality,low quality,More than five fingers in one hand,More than 5 toes on one foot,hand with more than 5 fingers,hand with less than 4 fingers,ad anatomy,bad hands,mutated hands and fingers,extra legs,extra arms,interlocked fingers,duplicate,cropped,text,jpeg, sketch, rough lines, colorful, colors, multiple colors, way too many colors, ines, colored",
+      "clip": [
+        "14",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Prompt)"
+    }
+  },
+  "8": {
+    "inputs": {
+      "samples": [
+        "3",
+        0
+      ],
+      "vae": [
+        "4",
+        2
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "11": {
+    "inputs": {
+      "image": "微信图片_20240129230602 (1).jpg",
+      "upload": "image"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "12": {
+    "inputs": {
+      "pixels": [
+        "11",
+        0
+      ],
+      "vae": [
+        "4",
+        2
+      ]
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "VAE Encode"
+    }
+  },
+  "14": {
+    "inputs": {
+      "lora_name": "LineArt2.safetensors",
+      "strength_model": 0.05,
+      "strength_clip": 0.05,
+      "model": [
+        "4",
+        0
+      ],
+      "clip": [
+        "4",
+        1
+      ]
+    },
+    "class_type": "LoraLoader",
+    "_meta": {
+      "title": "Load LoRA"
+    }
+  },
+  "15": {
+    "inputs": {
+      "control_net_name": "controlnetMyseeEdgeDrawing_02.safetensors"
+    },
+    "class_type": "ControlNetLoader",
+    "_meta": {
+      "title": "Load ControlNet Model"
+    }
+  },
+  "16": {
+    "inputs": {
+      "strength": 0.35000000000000003,
+      "conditioning": [
+        "6",
+        0
+      ],
+      "control_net": [
+        "15",
+        0
+      ],
+      "image": [
+        "11",
+        0
+      ]
+    },
+    "class_type": "ControlNetApply",
+    "_meta": {
+      "title": "Apply ControlNet"
+    }
+  },
+  "19": {
+    "inputs": {
+      "samples": [
+        "23",
+        0
+      ],
+      "vae": [
+        "25",
+        2
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "21": {
+    "inputs": {
+      "filename_prefix": "ComfyUI",
+      "images": [
+        "19",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  },
+  "22": {
+    "inputs": {
+      "pixels": [
+        "8",
+        0
+      ],
+      "vae": [
+        "25",
+        2
+      ]
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "VAE Encode"
+    }
+  },
+  "23": {
+    "inputs": {
+      "seed": 492262355106576,
+      "steps": 20,
+      "cfg": 10,
+      "sampler_name": "dpmpp_3m_sde",
+      "scheduler": "karras",
+      "denoise": 0.4,
+      "model": [
+        "25",
+        0
+      ],
+      "positive": [
+        "27",
+        0
+      ],
+      "negative": [
+        "28",
+        0
+      ],
+      "latent_image": [
+        "22",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler"
+    }
+  },
+  "25": {
+    "inputs": {
+      "ckpt_name": "SDXLAnimeBulldozer_v10.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "Load Checkpoint"
+    }
+  },
+  "27": {
+    "inputs": {
+      "text": "MAI SAKURAJIMA, LONG HAIR, BANGS, (BLACK HAIR:1.5), HAIR ORNAMENT, (PURPLE EYES:1.1), HAIRCLIP, RABBIT HAIR ORNAMENT,\nSKIRT, SHIRT, SCHOOL UNIFORM, WHITE SHIRT, SHORT SLEEVES, PANTYHOSE, PLEATED SKIRT, COLLARED SHIRT, BLUE SKIRT, BLACK PANTYHOSE, RED NECKTIE, JACKET, (BROWN JACKET:1.5),\nBOW, ANIMAL EARS, CLEAVAGE, BARE SHOULDERS, PANTYHOSE, BOWTIE, BLACK FOOTWEAR, RABBIT EARS, HIGH HEELS, LEOTARD, BLACK PANTYHOSE, STRAPLESS, BLACK BOW, DETACHED COLLAR, FAKE ANIMAL EARS, PLAYBOY BUNNY, BLACK LEOTARD, STRAPLESS LEOTARD, THIGHBAND PANTYHOSE, BLACK BOWTIE,1 girl",
+      "clip": [
+        "25",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Prompt)"
+    }
+  },
+  "28": {
+    "inputs": {
+      "text": "text, watermark, negativeXL_D,unaestheticXL_hk1,photorealistic,3d model,cinematic,bad anatomy,blurry,disembodied limb,worst quality,low quality,More than five fingers in one hand,More than 5 toes on one foot,hand with more than 5 fingers,hand with less than 4 fingers,ad anatomy,bad hands,mutated hands and fingers,extra legs,extra arms,interlocked fingers,duplicate,cropped,text,jpeg, sketch, rough lines, colorful, colors, multiple colors, way too many colors, ines, colored",
+      "clip": [
+        "25",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Prompt)"
+    }
+  }
+}
+
+
+
+LineArtSDXL_outputs = ['21']

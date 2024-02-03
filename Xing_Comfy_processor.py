@@ -1,5 +1,6 @@
 from init import *
-from WhiteRemoval import process_image
+from AlphaProcessor import preprocess_image, postprocess_image
+import PIL
 
 
 if mp.current_process().name == "taskProcessor":
@@ -58,15 +59,20 @@ def i2i(client_data, message):
         config=client_data["config"]
         init_img: Image.Image
         init_img = decodePNG(message)
+
+        init_img = preprocess_image(init_img)
+
+        init_img.save("preprocesstest.png")
+
         shape = init_img.size
         #!!!!!!!!!!FOR TESTING!!!!
-        init_img = init_img.resize((int(shape[0] * 0.5), int(shape[1] * 0.5)), Image.LANCZOS)
+        init_img = init_img.resize((int(shape[0] * 0.7), int(shape[1] * 0.7)), Image.LANCZOS)
         #!!!!!!!!!!FOR TESTING!!!!
         image_handler.set_image_value(init_img)
 
         #mode
-        prompt = Prompt(json_modes.SDXLrembg)
-        execute_outputs = json_modes.SDXLrembg_output
+        prompt = Prompt(json_modes.LineArtNew)
+        execute_outputs = json_modes.LineArtNew_output
         extra_data = json_modes.SDXL_data
         prompt_id = '31de2ae1-c8c3-4dd0-85ff-d5fe017f9602' #change later
 
@@ -83,9 +89,9 @@ def i2i(client_data, message):
 
         #Configs - KSampler
         new_seed = random.randint(0, 2**32)
-        # prompt.update_attribute("KSampler", "seed", new_seed)
-        # prompt.update_attribute("KSampler", "cfg", float(config_data.get('cfg', '7')))
-        # prompt.update_attribute("KSampler", "denoise", float(config_data.get('intensity', '60')) * 0.01)
+        prompt.update_attribute("KSampler", "seed", new_seed)
+        prompt.update_attribute("KSampler", "cfg", float(config['cfg']))
+       # prompt.update_attribute("KSampler", "denoise",  float(config['intensity']) * 0.01)
 
         #Configs - models
         model = config['model']
@@ -100,16 +106,8 @@ def i2i(client_data, message):
         print("positive prompt test")
         print("positive prompt is" + pos_prompt)
         neg_prompt = config["negPrompt"]
-
-        #For Remove Background (Layering) Experimental Feature
-        rembgtest = False
-
-        if rembgtest:
-            prompt.update_attribute("CLIPTextEncode", "text", "masterpiece, best quality," + "completely  white background," + "empty background," + pos_prompt)
-            prompt.append_attribute("CLIPTextEncode_1", "text", "easynegative" + neg_prompt)
-        else:
-            prompt.update_attribute("CLIPTextEncode", "text", "masterpiece, best quality," + pos_prompt)
-            prompt.append_attribute("CLIPTextEncode_1", "text", "easynegative" + neg_prompt)
+        prompt.update_attribute("CLIPTextEncode", "text", "masterpiece, best quality," + pos_prompt)
+        prompt.append_attribute("CLIPTextEncode_1", "text", "easynegative" + neg_prompt)
 
 
         
@@ -120,14 +118,12 @@ def i2i(client_data, message):
 
         #!!!!!!!!! for testing !!!!!!!!!
         image = image.resize(shape, Image.LANCZOS)
+
+        image = postprocess_image(image)
+        image.save("postprocesstest.png")
         #!!!!!!!!! for testing !!!!!!!!!
-        
-        image = image.convert('RGBA')
 
-
-        #Experimental Removing Background Feature
-        if rembgtest:
-            image = process_image(image)
+        # image = image.convert("RGBA")
 
         result = image_to_png_bytestring(image.resize((shape[0], shape[1]), Image.LANCZOS))
 
