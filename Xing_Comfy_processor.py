@@ -66,13 +66,16 @@ def i2i(client_data, message):
 
         shape = init_img.size
         #!!!!!!!!!!FOR TESTING!!!!
-        init_img = init_img.resize((int(shape[0] * 0.7), int(shape[1] * 0.7)), Image.LANCZOS)
+        init_img = init_img.resize((int(shape[0] * 1), int(shape[1] * 1)), Image.LANCZOS)
         #!!!!!!!!!!FOR TESTING!!!!
         image_handler.set_image_value(init_img)
 
+        #testing - mode
+        LineArtSDXL = True
+
         #mode
-        prompt = Prompt(json_modes.LineArtNew)
-        execute_outputs = json_modes.LineArtNew_output
+        prompt = Prompt(json_modes.LineArtSDXL)
+        execute_outputs = json_modes.LineArtSDXL_outputs
         extra_data = json_modes.SDXL_data
         prompt_id = '31de2ae1-c8c3-4dd0-85ff-d5fe017f9602' #change later
 
@@ -88,26 +91,36 @@ def i2i(client_data, message):
 
 
         #Configs - KSampler
-        new_seed = random.randint(0, 2**32)
-        prompt.update_attribute("KSampler", "seed", new_seed)
-        prompt.update_attribute("KSampler", "cfg", float(config['cfg']))
+        if LineArtSDXL:
+            print("testing LineArtSDXL")
+        else:
+            new_seed = random.randint(0, 2**32)
+            prompt.update_attribute("KSampler", "seed", new_seed)
+            prompt.update_attribute("KSampler", "cfg", float(config['cfg']))
        # prompt.update_attribute("KSampler", "denoise",  float(config['intensity']) * 0.01)
 
         #Configs - models
-        model = config['model']
-        if model == None or model == "":
-            model = "SDXLAnimeBulldozer_v10.safetensors"
-        if current_model != model:
-            current_model = model
-            prompt.update_attribute("CheckpointLoaderSimple", "ckpt_name", model)
+        if LineArtSDXL:
+            print("testing LineArtSDXL, bypassing models config")
+        else:
+            model = config['model']
+            if model == None or model == "":
+                model = "SDXLAnimeBulldozer_v10.safetensors"
+            if current_model != model:
+                current_model = model
+                prompt.update_attribute("CheckpointLoaderSimple", "ckpt_name", model)
 
         #Configs - prompt
-        pos_prompt = config['prompt']
-        print("positive prompt test")
-        print("positive prompt is" + pos_prompt)
-        neg_prompt = config["negPrompt"]
-        prompt.update_attribute("CLIPTextEncode", "text", "masterpiece, best quality," + pos_prompt)
-        prompt.append_attribute("CLIPTextEncode_1", "text", "easynegative" + neg_prompt)
+        if LineArtSDXL:
+            print("testing LineArtSDXL, bypassing prompt config")
+        else:
+            model = config['model']      
+            pos_prompt = config['prompt']
+            print("positive prompt test")
+            print("positive prompt is" + pos_prompt)
+            neg_prompt = config["negPrompt"]
+            prompt.update_attribute("CLIPTextEncode", "text", "masterpiece, best quality," + pos_prompt)
+            prompt.append_attribute("CLIPTextEncode_1", "text", "easynegative" + neg_prompt)
 
 
         
