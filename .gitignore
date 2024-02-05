@@ -19,3 +19,5 @@ cache/
 *.pt
 *.pth
 
+postprocesstest.png
+preprocesstest.png
