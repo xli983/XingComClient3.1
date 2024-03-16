@@ -85,7 +85,7 @@ prompt_text = """
     "4": {
         "class_type": "CheckpointLoaderSimple",
         "inputs": {
-            "ckpt_name": 'etherBluMix_etherBluMix5.safetensors'
+            "ckpt_name": "v1-5-pruned-emaonly.ckpt"
         }
     },
     "5": {

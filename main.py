@@ -5,6 +5,8 @@ import os
 import importlib.util
 import folder_paths
 import time
+import time
+import aioconsole
 
 def execute_prestartup_script():
     def execute_script(script_path):
@@ -64,6 +66,10 @@ if __name__ == "__main__":
         os.environ['CUDA_VISIBLE_DEVICES'] = str(args.cuda_device)
         print("Set cuda device to:", args.cuda_device)
 
+    if args.deterministic:
+        if 'CUBLAS_WORKSPACE_CONFIG' not in os.environ:
+            os.environ['CUBLAS_WORKSPACE_CONFIG'] = ":4096:8"
+
     import cuda_malloc
 
 import comfy.utils
@@ -86,6 +92,7 @@ def cuda_malloc_warning():
         if cuda_malloc_warning:
             print("\nWARNING: this card most likely does not support cuda-malloc, if you get \"CUDA error\" please run ComfyUI with: --disable-cuda-malloc\n")
 
+
 def prompt_worker(q, server):
     e = execution.PromptExecutor(server)
     last_gc_collect = 0
@@ -93,24 +100,50 @@ def prompt_worker(q, server):
     gc_collect_interval = 10.0
 
     while True:
-        timeout = None
+        timeout = 1000.0
         if need_gc:
             timeout = max(gc_collect_interval - (current_time - last_gc_collect), 0.0)
 
         queue_item = q.get(timeout=timeout)
         if queue_item is not None:
+            print("queue item is not none")
             item, item_id = queue_item
             execution_start_time = time.perf_counter()
             prompt_id = item[1]
+            server.last_prompt_id = prompt_id
+
+            print(item[2])
+            print(prompt_id)
+            print(item[3])
+            print(item[4])
             e.execute(item[2], prompt_id, item[3], item[4])
+            print("e.execute commenced")
             need_gc = True
-            q.task_done(item_id, e.outputs_ui)
+            q.task_done(item_id,
+                        e.outputs_ui,
+                        status=execution.PromptQueue.ExecutionStatus(
+                            status_str='success' if e.success else 'error',
+                            completed=e.success,
+                            messages=e.status_messages))
             if server.client_id is not None:
                 server.send_sync("executing", { "node": None, "prompt_id": prompt_id }, server.client_id)
 
             current_time = time.perf_counter()
             execution_time = current_time - execution_start_time
             print("Prompt executed in {:.2f} seconds".format(execution_time))
+
+        flags = q.get_flags()
+        free_memory = flags.get("free_memory", False)
+
+        if flags.get("unload_models", free_memory):
+            comfy.model_management.unload_all_models()
+            need_gc = True
+            last_gc_collect = 0
+
+        if free_memory:
+            e.reset()
+            need_gc = True
+            last_gc_collect = 0
 
         if need_gc:
             current_time = time.perf_counter()
@@ -120,14 +153,37 @@ def prompt_worker(q, server):
                 last_gc_collect = current_time
                 need_gc = False
 
+
+async def input_loop():
+    promptint = 100
+    while True:
+        user_input = await aioconsole.ainput("type something: ")  # Use aioconsole for async input
+        if user_input == "0":  # Example command to stop the loop
+            promptint += 1
+            print("injecting queue")
+            prompt_id = 'dfcd482a-4fe2-4643-8d0c-0b77f5edd' + str(promptint)
+            print(prompt_id)
+            outputs_to_execute = ['9']
+            
+            number = 1
+            extra_data = {}
+            server.prompt_queue.put((number, prompt_id, {'3': {'inputs': {'seed': promptint, 'steps': 20, 'cfg': 8.0, 'sampler_name': 'euler', 'scheduler': 'normal', 'denoise': 0.8200000000000001, 'model': ['4', 0], 'positive': ['6', 0], 'negative': ['7', 0], 'latent_image': ['5', 0]}, 'class_type': 'KSampler', '_meta': {'title': 'KSampler'}}, '4': {'inputs': {'ckpt_name': 'AnimeLineart_v10.ckpt'}, 'class_type': 'CheckpointLoaderSimple', '_meta': {'title': 'Load Checkpoint'}}, '5': {'inputs': {'width': 768, 'height': 768, 'batch_size': 1}, 'class_type': 'EmptyLatentImage', '_meta': {'title': 'Empty Latent Image'}}, '6': {'inputs': {'text': 'beautiful scenery nature glass bottle landscape, , purple galaxy bottle,', 'clip': ['4', 1]}, 'class_type': 'CLIPTextEncode', '_meta': {'title': 'CLIP Text Encode (Prompt)'}}, '7': {'inputs': {'text': 'text, watermark', 'clip': ['4', 1]}, 'class_type': 'CLIPTextEncode', '_meta': {'title': 'CLIP Text Encode (Prompt)'}}, '8': {'inputs': {'samples': ['3', 0], 'vae': ['4', 2]}, 'class_type': 'VAEDecode', '_meta': {'title': 'VAE Decode'}}, '9': {'inputs': {'filename_prefix': 'ComfyUI', 'images': ['8', 0]}, 'class_type': 'SaveImage', '_meta': {'title': 'Save Image'}}}, {'extra_pnginfo': {'workflow': {'last_node_id': 9, 'last_link_id': 12, 'nodes': [{'id': 8, 'type': 'VAEDecode', 'pos': [1209, 188], 'size': {'0': 210, '1': 46}, 'flags': {}, 'order': 5, 'mode': 0, 'inputs': [{'name': 'samples', 'type': 'LATENT', 'link': 7}, {'name': 'vae', 'type': 'VAE', 'link': 8}], 'outputs': [{'name': 'IMAGE', 'type': 'IMAGE', 'links': [9], 'slot_index': 0}], 'properties': {'Node name for S&R': 'VAEDecode'}}, {'id': 7, 'type': 'CLIPTextEncode', 'pos': [413, 389], 'size': {'0': 425.27801513671875, '1': 180.6060791015625}, 'flags': {}, 'order': 3, 'mode': 0, 'inputs': [{'name': 'clip', 'type': 'CLIP', 'link': 5}], 'outputs': [{'name': 'CONDITIONING', 'type': 'CONDITIONING', 'links': [6], 'slot_index': 0}], 'properties': {'Node name for S&R': 'CLIPTextEncode'}, 'widgets_values': ['text, watermark']}, {'id': 6, 'type': 'CLIPTextEncode', 'pos': [415, 186], 'size': {'0': 422.84503173828125, '1': 164.31304931640625}, 'flags': {}, 'order': 2, 'mode': 0, 'inputs': [{'name': 'clip', 'type': 'CLIP', 'link': 3}], 'outputs': [{'name': 'CONDITIONING', 'type': 'CONDITIONING', 'links': [4], 'slot_index': 0}], 'properties': {'Node name for S&R': 'CLIPTextEncode'}, 'widgets_values': ['beautiful scenery nature glass bottle landscape, , purple galaxy bottle,']}, {'id': 9, 'type': 'SaveImage', 'pos': [1509, 187], 'size': {'0': 210, '1': 270}, 'flags': {}, 'order': 6, 'mode': 0, 'inputs': [{'name': 'images', 'type': 'IMAGE', 'link': 9}], 'properties': {}, 'widgets_values': ['ComfyUI']}, {'id': 3, 'type': 'KSampler', 'pos': [863, 186], 'size': {'0': 315, '1': 262}, 'flags': {}, 'order': 4, 'mode': 0, 'inputs': [{'name': 'model', 'type': 'MODEL', 'link': 12}, {'name': 'positive', 'type': 'CONDITIONING', 'link': 4}, {'name': 'negative', 'type': 'CONDITIONING', 'link': 6}, {'name': 'latent_image', 'type': 'LATENT', 'link': 11}], 'outputs': [{'name': 'LATENT', 'type': 'LATENT', 'links': [7], 'slot_index': 0}], 'properties': {'Node name for S&R': 'KSampler'}, 'widgets_values': [357518788616362, 'randomize', 20, 8, 'euler', 'normal', 0.8200000000000001]}, {'id': 5, 'type': 'EmptyLatentImage', 'pos': [473, 609], 'size': {'0': 315, '1': 106}, 'flags': {}, 'order': 0, 'mode': 0, 'outputs': [{'name': 'LATENT', 'type': 'LATENT', 'links': [11], 'slot_index': 0}], 'properties': {'Node name for S&R': 'EmptyLatentImage'}, 'widgets_values': [768, 768, 1]}, {'id': 4, 'type': 'CheckpointLoaderSimple', 'pos': [26, 474], 'size': {'0': 315, '1': 98}, 'flags': {}, 'order': 1, 'mode': 0, 'outputs': [{'name': 'MODEL', 'type': 'MODEL', 'links': [12], 'slot_index': 0}, {'name': 'CLIP', 'type': 'CLIP', 'links': [3, 5], 'slot_index': 1}, {'name': 'VAE', 'type': 'VAE', 'links': [8], 'slot_index': 2}], 'properties': {'Node name for S&R': 'CheckpointLoaderSimple'}, 'widgets_values': ['AnimeLineart_v10.ckpt']}], 'links': [[3, 4, 1, 6, 0, 'CLIP'], [4, 6, 0, 3, 1, 'CONDITIONING'], [5, 4, 1, 7, 0, 'CLIP'], [6, 7, 0, 3, 2, 'CONDITIONING'], [7, 3, 0, 8, 0, 'LATENT'], [8, 4, 2, 8, 1, 'VAE'], [9, 8, 0, 9, 0, 'IMAGE'], [11, 5, 0, 3, 3, 'LATENT'], [12, 4, 0, 3, 0, 'MODEL']], 'groups': [], 'config': {}, 'extra': {}, 'version': 0.4}}, 'client_id': '7ba8772e213048d2a3a45949c30072eb'}, outputs_to_execute))
+            # q.put((number, prompt_id, {'3': {'inputs': {'seed': 357518788616362, 'steps': 20, 'cfg': 8.0, 'sampler_name': 'euler', 'scheduler': 'normal', 'denoise': 0.8200000000000001, 'model': ['4', 0], 'positive': ['6', 0], 'negative': ['7', 0], 'latent_image': ['5', 0]}, 'class_type': 'KSampler', '_meta': {'title': 'KSampler'}}, '4': {'inputs': {'ckpt_name': 'AnimeLineart_v10.ckpt'}, 'class_type': 'CheckpointLoaderSimple', '_meta': {'title': 'Load Checkpoint'}}, '5': {'inputs': {'width': 768, 'height': 768, 'batch_size': 1}, 'class_type': 'EmptyLatentImage', '_meta': {'title': 'Empty Latent Image'}}, '6': {'inputs': {'text': 'beautiful scenery nature glass bottle landscape, , purple galaxy bottle,', 'clip': ['4', 1]}, 'class_type': 'CLIPTextEncode', '_meta': {'title': 'CLIP Text Encode (Prompt)'}}, '7': {'inputs': {'text': 'text, watermark', 'clip': ['4', 1]}, 'class_type': 'CLIPTextEncode', '_meta': {'title': 'CLIP Text Encode (Prompt)'}}, '8': {'inputs': {'samples': ['3', 0], 'vae': ['4', 2]}, 'class_type': 'VAEDecode', '_meta': {'title': 'VAE Decode'}}, '9': {'inputs': {'filename_prefix': 'ComfyUI', 'images': ['8', 0]}, 'class_type': 'SaveImage', '_meta': {'title': 'Save Image'}}}, {'extra_pnginfo': {'workflow': {'last_node_id': 9, 'last_link_id': 12, 'nodes': [{'id': 8, 'type': 'VAEDecode', 'pos': [1209, 188], 'size': {'0': 210, '1': 46}, 'flags': {}, 'order': 5, 'mode': 0, 'inputs': [{'name': 'samples', 'type': 'LATENT', 'link': 7}, {'name': 'vae', 'type': 'VAE', 'link': 8}], 'outputs': [{'name': 'IMAGE', 'type': 'IMAGE', 'links': [9], 'slot_index': 0}], 'properties': {'Node name for S&R': 'VAEDecode'}}, {'id': 7, 'type': 'CLIPTextEncode', 'pos': [413, 389], 'size': {'0': 425.27801513671875, '1': 180.6060791015625}, 'flags': {}, 'order': 3, 'mode': 0, 'inputs': [{'name': 'clip', 'type': 'CLIP', 'link': 5}], 'outputs': [{'name': 'CONDITIONING', 'type': 'CONDITIONING', 'links': [6], 'slot_index': 0}], 'properties': {'Node name for S&R': 'CLIPTextEncode'}, 'widgets_values': ['text, watermark']}, {'id': 6, 'type': 'CLIPTextEncode', 'pos': [415, 186], 'size': {'0': 422.84503173828125, '1': 164.31304931640625}, 'flags': {}, 'order': 2, 'mode': 0, 'inputs': [{'name': 'clip', 'type': 'CLIP', 'link': 3}], 'outputs': [{'name': 'CONDITIONING', 'type': 'CONDITIONING', 'links': [4], 'slot_index': 0}], 'properties': {'Node name for S&R': 'CLIPTextEncode'}, 'widgets_values': ['beautiful scenery nature glass bottle landscape, , purple galaxy bottle,']}, {'id': 9, 'type': 'SaveImage', 'pos': [1509, 187], 'size': {'0': 210, '1': 270}, 'flags': {}, 'order': 6, 'mode': 0, 'inputs': [{'name': 'images', 'type': 'IMAGE', 'link': 9}], 'properties': {}, 'widgets_values': ['ComfyUI']}, {'id': 3, 'type': 'KSampler', 'pos': [863, 186], 'size': {'0': 315, '1': 262}, 'flags': {}, 'order': 4, 'mode': 0, 'inputs': [{'name': 'model', 'type': 'MODEL', 'link': 12}, {'name': 'positive', 'type': 'CONDITIONING', 'link': 4}, {'name': 'negative', 'type': 'CONDITIONING', 'link': 6}, {'name': 'latent_image', 'type': 'LATENT', 'link': 11}], 'outputs': [{'name': 'LATENT', 'type': 'LATENT', 'links': [7], 'slot_index': 0}], 'properties': {'Node name for S&R': 'KSampler'}, 'widgets_values': [357518788616362, 'randomize', 20, 8, 'euler', 'normal', 0.8200000000000001]}, {'id': 5, 'type': 'EmptyLatentImage', 'pos': [473, 609], 'size': {'0': 315, '1': 106}, 'flags': {}, 'order': 0, 'mode': 0, 'outputs': [{'name': 'LATENT', 'type': 'LATENT', 'links': [11], 'slot_index': 0}], 'properties': {'Node name for S&R': 'EmptyLatentImage'}, 'widgets_values': [768, 768, 1]}, {'id': 4, 'type': 'CheckpointLoaderSimple', 'pos': [26, 474], 'size': {'0': 315, '1': 98}, 'flags': {}, 'order': 1, 'mode': 0, 'outputs': [{'name': 'MODEL', 'type': 'MODEL', 'links': [12], 'slot_index': 0}, {'name': 'CLIP', 'type': 'CLIP', 'links': [3, 5], 'slot_index': 1}, {'name': 'VAE', 'type': 'VAE', 'links': [8], 'slot_index': 2}], 'properties': {'Node name for S&R': 'CheckpointLoaderSimple'}, 'widgets_values': ['AnimeLineart_v10.ckpt']}], 'links': [[3, 4, 1, 6, 0, 'CLIP'], [4, 6, 0, 3, 1, 'CONDITIONING'], [5, 4, 1, 7, 0, 'CLIP'], [6, 7, 0, 3, 2, 'CONDITIONING'], [7, 3, 0, 8, 0, 'LATENT'], [8, 4, 2, 8, 1, 'VAE'], [9, 8, 0, 9, 0, 'IMAGE'], [11, 5, 0, 3, 3, 'LATENT'], [12, 4, 0, 3, 0, 'MODEL']], 'groups': [], 'config': {}, 'extra': {}, 'version': 0.4}}}, outputs_to_execute))
+            
+
+
+
 async def run(server, address='', port=8188, verbose=True, call_on_start=None):
-    await asyncio.gather(server.start(address, port, verbose, call_on_start), server.publish_loop())
+    input_task = asyncio.create_task(input_loop())
+    await asyncio.gather(server.start(address, port, verbose, call_on_start), server.publish_loop(), input_task)
 
 
 def hijack_progress(server):
     def hook(value, total, preview_image):
         comfy.model_management.throw_exception_if_processing_interrupted()
-        server.send_sync("progress", {"value": value, "max": total}, server.client_id)
+        progress = {"value": value, "max": total, "prompt_id": server.last_prompt_id, "node": server.last_node_id}
+
+        server.send_sync("progress", progress, server.client_id)
         if preview_image is not None:
             server.send_sync(BinaryEventTypes.UNENCODED_PREVIEW_IMAGE, preview_image, server.client_id)
     comfy.utils.set_progress_bar_global_hook(hook)
@@ -159,6 +215,20 @@ def load_extra_path_config(yaml_path):
                 print("Adding extra search path", x, full_path)
                 folder_paths.add_model_folder_path(x, full_path)
 
+#def setup_server_and_queue():
+#loop = asyncio.new_event_loop()
+#asyncio.set_event_loop(loop)
+
+#penguinserver = server.PromptServer(loop)
+#penguinq = execution.PromptQueue(penguinserver)
+
+#penguinserver.prompt_queue = penguinq
+#penguinserver.add_routes()  # Make sure this is a method call
+
+#return penguinq, penguinserver
+
+
+
 
 if __name__ == "__main__":
     if args.temp_directory:
@@ -166,6 +236,8 @@ if __name__ == "__main__":
         print(f"Setting temp directory to: {temp_dir}")
         folder_paths.set_temp_directory(temp_dir)
     cleanup_temp()
+
+    # q, server = setup_server_and_queue()
 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
@@ -187,7 +259,15 @@ if __name__ == "__main__":
     server.add_routes()
     hijack_progress(server)
 
-    threading.Thread(target=prompt_worker, daemon=True, args=(q, server,)).start()
+
+    # Adding the code to activate prompt_worker every now and then'
+
+
+# Assuming necessary imports are already handled
+# from your_script import PromptQueue, PromptServer
+# import execution, comfy.model_management
+
+    threading.Thread(target=prompt_worker, daemon=True, args=(q, server)).start()
 
     if args.output_directory:
         output_dir = os.path.abspath(args.output_directory)
@@ -221,4 +301,6 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\nStopped server")
 
-    cleanup_temp()
+
+
+cleanup_temp()
