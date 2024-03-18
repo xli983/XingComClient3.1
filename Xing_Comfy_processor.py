@@ -1,6 +1,8 @@
 from init import *
 from AlphaProcessor import preprocess_image, postprocess_image
 import PIL
+from XingQueue import *
+import shared
 
 
 if mp.current_process().name == "taskProcessor":
@@ -12,7 +14,7 @@ if mp.current_process().name == "taskProcessor":
     from main import cleanup_temp
     from comfy.cli_args import args
     from Interrupt import ProgressTracker
-    from reversePrompt.clip_interrogator import Config, Interrogator
+    # from reversePrompt.clip_interrogator import Config, Interrogator
 
 
 def comfy_init():
@@ -105,30 +107,18 @@ def i2i(client_data, message):
         neg_prompt = config["negPrompt"]
         prompt.update_attribute("CLIPTextEncode", "text", "masterpiece, best quality," + pos_prompt)
         prompt.append_attribute("CLIPTextEncode_1", "text", "easynegative" + neg_prompt)
-
-
         
-        print(prompt.data)
-        image = executor.execute(prompt.data, prompt_id, extra_data, execute_outputs)
-        if image == "Interrupted":
-            return("Canceled")
+        #print(prompt.data)
+        shared.method_called_flag = True
 
-        #!!!!!!!!! for testing !!!!!!!!!
-        image = image.resize(shape, Image.LANCZOS)
-
-        image = postprocess_image(image)
-        image.save("postprocesstest.png")
-        #!!!!!!!!! for testing !!!!!!!!!
-
-        # image = image.convert("RGBA")
-
-        result = image_to_png_bytestring(image.resize((shape[0], shape[1]), Image.LANCZOS))
-
-        return result
+        return None
 
     except Exception as e:
         print(traceback.format_exc())
         raise e
+    
+
+
     
 def image2text(image_data, config_data, client_id, init,state):
     if init is False:
