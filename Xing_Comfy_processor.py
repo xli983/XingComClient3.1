@@ -3,6 +3,7 @@ from AlphaProcessor import preprocess_image, postprocess_image
 import PIL
 from XingQueue import *
 import shared
+import time
 
 
 if mp.current_process().name == "taskProcessor":
@@ -45,10 +46,6 @@ def i2i(client_data, message):
     global executor
     global current_model
     ProgressTracker.interrupter=False
-    if not comfyInited:
-        comfy_init()
-        executor = execution.PromptExecutor()
-        comfyInited = True
         
     # ProgressTracker.interrupter=state
     # ProgressTracker.interrupter.value=0
@@ -111,6 +108,8 @@ def i2i(client_data, message):
         #print(prompt.data)
         shared.method_called_flag = True
 
+        while shared.output_here == False:
+            print("waiting")
         return None
 
     except Exception as e:
