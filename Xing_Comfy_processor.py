@@ -4,6 +4,7 @@ import PIL
 from XingQueue import *
 import shared
 import time
+import multiprocessing.shared_memory
 
 
 if mp.current_process().name == "taskProcessor":
@@ -104,12 +105,19 @@ def i2i(client_data, message):
         neg_prompt = config["negPrompt"]
         prompt.update_attribute("CLIPTextEncode", "text", "masterpiece, best quality," + pos_prompt)
         prompt.append_attribute("CLIPTextEncode_1", "text", "easynegative" + neg_prompt)
+
+        shared.prompt = (prompt.data, {'extra_pnginfo': extra_data, 'client_id': '7ba8772e213048d2a3a45949c30072eb'})
+        shared.prompt_id = prompt_id
+        shared.outputs_to_execute = execute_outputs
         
-        #print(prompt.data)
-        shared.method_called_flag = True
+        print(prompt.data)
+        shared_memory = multiprocessing.shared_memory.SharedMemory(name="shared_memory_example")
+        shared_memory.buf[0] = 1  # True
+        shared_memory.close()
 
         while shared.output_here == False:
             print("waiting")
+            time.sleep(5)
         return None
 
     except Exception as e:

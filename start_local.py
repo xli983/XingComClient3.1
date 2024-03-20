@@ -1,9 +1,13 @@
 import asyncio
 import socket
 from multiprocessing import Process, set_start_method
+import multiprocessing.shared_memory
 from Xing_Comfy_processor import *  # Assuming comfyui is a function to be run
 from XComClient import ComClient
 import main
+import threading
+import input_loop
+from input_loop import input_loop
 # Assuming i2i and other necessary imports are correctly set in XComClient and Xing_Comfy_processor
 
 def get_local_ip():
@@ -17,7 +21,6 @@ def get_local_ip():
         return f"Error occurred: {e}"
 
 async def async_run_comclient(comclient):
-    # Your async logic here, for example, starting the client
     await comclient.start()
 
 def run_comclient(local_ip):
@@ -25,25 +28,38 @@ def run_comclient(local_ip):
     comclient = ComClient([i2i], "server", local_ip, 8765)
     asyncio.run(async_run_comclient(comclient))
 
-def run_comfyui():
-    # Assuming comfyui is an asyncio-based UI, otherwise adjust accordingly
-    # If comfyui is a synchronous function, it can be called directly without adjustments
-    asyncio.run(main.comfyui())
+def run_comfyui_in_thread(q, server, loopr):
+    def thread_target():
+        asyncio.set_event_loop(asyncio.new_event_loop())  # New event loop for this thread
+        main.comfyui(q, server, loop)
+    
+    thread = threading.Thread(target=thread_target)
+    thread.start()
+    return thread
+
+def run_inputloop_in_thread(server):
+    def thread_target():
+        asyncio.set_event_loop(asyncio.new_event_loop())  # New event loop for this thread
+        input_loop(server)  # Adjust as needed for your implementation
+    
+    thread = threading.Thread(target=thread_target)
+    thread.start()
+    return thread
+
 
 if __name__ == "__main__":
-    # Use "spawn" start method to avoid issues on Windows and to have a fresh Python interpreter for each process
-    set_start_method("spawn")
+    q, server, loop = main.setup_server_and_queue()
+
+    shared_memory = multiprocessing.shared_memory.SharedMemory(create=True, size=1, name="shared_memory_example")
+    shared_memory.buf[0] = 0  # False
     
     local_ip = get_local_ip()
 
-    # Create processes for ComClient and comfyui
     comclient_process = Process(target=run_comclient, args=(local_ip,))
-    comfyui_process = Process(target=run_comfyui)
+    comfyui_thread = run_comfyui_in_thread(q, server, loop)
+    inputloop_thread = run_inputloop_in_thread(server)
 
-    # Start the processes
+
     comclient_process.start()
-    comfyui_process.start()
 
-    # Wait for both processes to finish
-    comfyui_process.join()
     comclient_process.join()
