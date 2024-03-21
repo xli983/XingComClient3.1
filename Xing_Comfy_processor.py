@@ -5,6 +5,10 @@ from XingQueue import *
 import shared
 import time
 import multiprocessing.shared_memory
+from multiprocessing import Manager, shared_memory
+import start_local
+import json
+import struct
 
 
 if mp.current_process().name == "taskProcessor":
@@ -106,11 +110,19 @@ def i2i(client_data, message):
         prompt.update_attribute("CLIPTextEncode", "text", "masterpiece, best quality," + pos_prompt)
         prompt.append_attribute("CLIPTextEncode_1", "text", "easynegative" + neg_prompt)
 
-        shared.prompt = (prompt.data, {'extra_pnginfo': extra_data, 'client_id': '7ba8772e213048d2a3a45949c30072eb'})
+
+
+    
+        shared.prompt = prompt.data, {'extra_pnginfo': {'workflow': extra_data}, 'client_id': '7ba8772e213048d2a3a45949c30072eb'}
         shared.prompt_id = prompt_id
         shared.outputs_to_execute = execute_outputs
-        
-        print(prompt.data)
+
+
+        write_to_shared_memory("shared_memory_prompt", prompt.data)
+        write_to_shared_memory("shared_memory_promptid", prompt_id)
+        write_to_shared_memory("shared_memory_promptoutput", execute_outputs)
+        write_to_shared_memory("shared_memory_promptextradata", extra_data)
+
         shared_memory = multiprocessing.shared_memory.SharedMemory(name="shared_memory_example")
         shared_memory.buf[0] = 1  # True
         shared_memory.close()
@@ -124,6 +136,7 @@ def i2i(client_data, message):
         print(traceback.format_exc())
         raise e
     
+
 
 
     
@@ -140,6 +153,32 @@ def image2text(image_data, config_data, client_id, init,state):
     except Exception as e:
         print(f"Error: {e}")
         raise e
+    
+
+
+def write_to_shared_memory(shm_name, data):
+    # Serialize data to JSON and encode it to bytes
+    serialized_data = json.dumps(data).encode('utf-8')
+    content_size = len(serialized_data)
+    
+    # Ensure the serialized data will fit in our 1MB shared memory segment
+    assert content_size <= (1024 * 1024 - 4), "Serialized data exceeds 1MB limit"
+    
+    # Create or get a reference to the shared memory
+    try:
+        # Try to attach to an existing shared memory segment
+        shm = shared_memory.SharedMemory(name=shm_name)
+    except FileNotFoundError:
+        # If the shared memory does not exist, create it
+        shm = shared_memory.SharedMemory(name=shm_name, create=True, size=1024 * 1024)
+    
+    
+    # Write the content size and content to the shared memory
+    shm.buf[:4] = struct.pack('I', content_size)  # Content size as unsigned int
+    shm.buf[4:4 + content_size] = serialized_data  # Serialized content
+    
+    # Cleanup: only do shm.close() here; shm.unlink() should be done when you're sure it's no longer needed
+    shm.close()
     
 
 
