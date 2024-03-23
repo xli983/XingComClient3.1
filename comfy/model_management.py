@@ -19,8 +19,8 @@ class CPUState(Enum):
     MPS = 2
 
 # Determine VRAM State
-vram_state = VRAMState.NORMAL_VRAM
-set_vram_to = VRAMState.NORMAL_VRAM
+vram_state = VRAMState.HIGH_VRAM
+set_vram_to = VRAMState.HIGH_VRAM
 cpu_state = CPUState.GPU
 
 total_vram = 0

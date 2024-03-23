@@ -58,6 +58,7 @@ class Prompt:
             getattr(self, class_type_name)[input_name] = value
         else:
             raise AttributeError(f"Invalid attribute {class_type_name}")
+        
     def append_attribute(self, class_type_name, input_name, value):
             if hasattr(self, class_type_name) and input_name in getattr(self, class_type_name):
                 existing_value = getattr(self, class_type_name)[input_name]
@@ -100,4 +101,16 @@ class Prompt:
             LoraNum = len(LoraList)
             self.update_attribute("CLIPTextEncode", "clip", [str(22+LoraNum-1), 1])
             self.update_attribute("KSampler", "model", [str(22+LoraNum-1), 0])
+
+    def update_prompt(self, node_pos, value):
+        self.data[node_pos]['inputs']['text'] = value
+
+    def get_prompt_position(self, input_name):
+        for key, val in self.data.items():
+            class_type = val.get("class_type")
+            if class_type == "KSampler":
+                if 'inputs' in val:
+                    return val['inputs'][input_name][0]
+                else:
+                    raise KeyError(f"No 'inputs' key for class_type: {class_type}")
     

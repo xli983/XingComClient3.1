@@ -30,8 +30,7 @@ def input_loop(server):
         shared_memory = multiprocessing.shared_memory.SharedMemory(name="shared_memory_example")
         # Check the value of the shared memory
         value = bool(shared_memory.buf[0])
-        time.sleep(2)
-        print(value)
+        time.sleep(1)
         if value:
             promptint += 1
             print("injecting queue")

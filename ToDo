@@ -1,0 +1,16 @@
+Optimization:
+Done 1) Always keep Comfy running in high VRAM mode as it will keep the models inside the vram. If we are going to use
+3090s in the futre, the vram is definitely enough and should really make things faster
+
+
+
+
+Future implementations:
+
+
+
+
+
+Comfy Change:
+
+The only comfy change we made is to nodes.py where we changed the naming of the saving function in comfy. I believe we will have to adjust the name according to job function and stuffs like that later. Should be really easy to restructure later on.

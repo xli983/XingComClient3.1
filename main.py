@@ -9,6 +9,7 @@ import time
 import aioconsole
 import shared
 from multiprocessing import Process, set_start_method
+import multiprocessing
 
 taskstart = False
 
@@ -135,6 +136,9 @@ def prompt_worker(q, server):
             current_time = time.perf_counter()
             execution_time = current_time - execution_start_time
             print("Prompt executed in {:.2f} seconds".format(execution_time))
+            shared_memoryoutput = multiprocessing.shared_memory.SharedMemory(name="output_here")
+            shared_memoryoutput.buf[0] = 1  # True
+
 
         flags = q.get_flags()
         free_memory = flags.get("free_memory", False)

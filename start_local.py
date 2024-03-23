@@ -53,6 +53,9 @@ if __name__ == "__main__":
     shared_memory = multiprocessing.shared_memory.SharedMemory(create=True, size=1, name="shared_memory_example")
     shared_memory.buf[0] = 0  # False
 
+    shared_memoryoutput = multiprocessing.shared_memory.SharedMemory(create=True, size=1, name="output_here")
+    shared_memoryoutput.buf[0] = 0  # False
+
     shared_memory_prompt = multiprocessing.shared_memory.SharedMemory(create=True, size=1024 * 1024, name="shared_memory_prompt")
     # shared_memory_prompt.buf[0] = 0  # False
 

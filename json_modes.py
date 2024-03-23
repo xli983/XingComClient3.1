@@ -302,8 +302,8 @@ SDXL = {
   "3": {
     "inputs": {
       "seed": 1000,
-      "steps": 35,
-      "cfg": 15,
+      "steps": 30,
+      "cfg": 10,
       "sampler_name": "dpmpp_2m",
       "scheduler": "karras",
       "denoise": 0.9500000000000001,
@@ -395,7 +395,7 @@ SDXL = {
   },
   "11": {
     "inputs": {
-      "image": "example.png",
+      "image": "preprocesstest.png",
       "upload": "image"
     },
     "class_type": "LoadImage",
@@ -726,7 +726,7 @@ SDXL_data = {
         "Node name for S&R": "LoadImage"
       },
       "widgets_values": [
-        "example.png",
+        "preprocesstest.png",
         "image"
       ]
     },
@@ -1098,7 +1098,7 @@ LineArtNew = {
   },
   "19": {
     "inputs": {
-      "image": "test.jpg",
+      "image": "preprocesstest.png",
       "upload": "image"
     },
     "class_type": "LoadImage",
@@ -1147,7 +1147,7 @@ LineArtSDXL = {
       "cfg": 10,
       "sampler_name": "dpmpp_3m_sde",
       "scheduler": "karras",
-      "denoise": 0.4,
+      "denoise": 0.8,
       "model": [
         "14",
         0
@@ -1223,7 +1223,7 @@ LineArtSDXL = {
   },
   "11": {
     "inputs": {
-      "image": "微信图片_20240129230602 (1).jpg",
+      "image": "preprocesstest.png",
       "upload": "image"
     },
     "class_type": "LoadImage",
@@ -1314,7 +1314,7 @@ LineArtSDXL = {
   },
   "21": {
     "inputs": {
-      "filename_prefix": "ComfyUI",
+      "filename_prefix": "ComclientOutput",
       "images": [
         "19",
         0
